@@ -1,27 +1,24 @@
 package com.tayek.tablet.gui.android.cb7;
-        import android.app.*;
-        import android.content.*;
-        import android.graphics.*;
-        import android.media.*;
-        import android.net.*;
-        import android.os.*;
-        import android.os.Message;
-        import android.provider.Settings.*;
-        import android.text.*;
-        import android.util.*;
-        import android.view.*;
-        import android.widget.*;
+import android.app.*;
+import android.content.*;
+import android.graphics.*;
+import android.media.*;
+import android.net.*;
+import android.os.*;
+import android.provider.Settings.*;
+import android.util.*;
+import android.view.*;
+import android.widget.*;
 
-        import com.tayek.tablet.*;
-        import com.tayek.tablet.gui.common.*;
-        import com.tayek.tablet.model.*;
-        import com.tayek.utilities.*;
+import com.tayek.io.*;
+import com.tayek.io.Audio.*;
+import com.tayek.tablet.*;
+import com.tayek.tablet.io.gui.common.*;
 
-        import java.io.*;
-        import java.lang.*;
-        import java.lang.System;
-        import java.util.*;
-        import java.util.logging.*;
+import java.lang.*;
+import java.lang.System;
+import java.util.*;
+import java.util.logging.*;
 //https://plus.google.com/103583939320326217147/posts/BQ5iYJEaaEH driver for usb
 //http://davidrs.com/wp/fix-android-device-not-showing-up-on-windows-8/
 public class MainActivity extends Activity implements Observer, View.OnClickListener {
@@ -30,13 +27,18 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
         NetworkInfo activeNetworkInfo=connectivityManager.getActiveNetworkInfo();
         return activeNetworkInfo!=null&&activeNetworkInfo.isConnected();
     }
-    void play() {
-        //mediaPlayer=MediaPlayer.create(this,R.raw.Electronic_Chime_KevanGC_495939803);
-        //int x=R.raw.Electronic_Chime_KevanGC_495939803;
-       // int y=R.raw.glass_ping_Go445_1207030150;
-       // int z=R.raw.Store_Door_Chime_Mike_Koenig_570742973;
-                // Electronic_Chime-KevanGC-495939803.wav
-        // mediaPlayer.start();
+    Integer id(Sound sound) {
+        switch(sound) {
+            case electronic_chime_kevangc_495939803:
+                return R.raw.electronic_chime_kevangc_495939803;
+            case glass_ping_go445_1207030150:
+                return R.raw.glass_ping_go445_1207030150;
+            case store_door_chime_mike_koenig_570742973:
+                return R.raw.store_door_chime_mike_koenig_570742973;
+            default:
+                logger.warning(""+" "+"default where!");
+                return null;
+        }
     }
     void buildGui(final Tablet tablet,final Toaster toaster) {
         guiAdapterABC=new GuiAdapterABC(tablet.group.model) {
@@ -105,19 +107,33 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
         for(int i=1;i<=tablet.group.model.buttons;i++)
             idToButton.put(i,buttons[i-1]);
     }
-    void init() {
+    void initialize() {
+        Main.log.init();
+        Main.log.setLevel(Level.ALL);
+        // move to common init?
+        System.out.println(System.getProperty("os.name"));
         Properties properties=java.lang.System.getProperties();
         logger.info(properties.size()+" properties.");
         for(Map.Entry<Object,Object> entry : properties.entrySet())
             logger.info(entry.getKey()+"="+entry.getValue());
+        System.out.println(Arrays.asList(Sound.values()));
+        //
         android_id=Secure.getString(getContentResolver(),Secure.ANDROID_ID);
         logger.info("android id: '"+android_id+"'");
         if(!isNetworkAvailable())
             System.out.println("network is not available!");
+        ((Audio.Android)Main.audio).setCallback(new Android.Callback<Sound>() {
+            @Override
+            public void call(Sound sound) {
+                System.out.println("playing sound.");
+                Integer id=id(sound);
+                mediaPlayer=MediaPlayer.create(MainActivity.this,id);
+                mediaPlayer.start();
+            }
+        });
         Integer tabletId=Group.androidIds.get(android_id);
         if(tabletId==null)
             tabletId=100;
-        System.out.println("tablet id is: "+tabletId);
         final Group group=new Group(1,Group.tabletsFive);
         String host=group.idToHost().get(tabletId);
         System.out.println("host="+host);
@@ -160,10 +176,8 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        Main.log.init();
-        Main.log.setLevel(Level.ALL);
         setContentView(R.layout.activity_main);
-        init();
+        initialize();
         tablet.startListening();
         tablet.group.model.addObserver(this);
         setContentView(layout);
