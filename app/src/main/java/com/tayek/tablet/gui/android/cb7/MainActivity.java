@@ -13,10 +13,13 @@ import android.widget.*;
 import com.tayek.io.*;
 import com.tayek.io.Audio.*;
 import com.tayek.tablet.*;
+import com.tayek.tablet.model.*;
 import com.tayek.tablet.io.gui.common.*;
+import com.tayek.tablet.model.Message;
 
 import java.lang.*;
 import java.lang.System;
+import java.net.*;
 import java.util.*;
 import java.util.logging.*;
 //https://plus.google.com/103583939320326217147/posts/BQ5iYJEaaEH driver for usb
@@ -41,7 +44,7 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
         }
     }
     void buildGui(final Tablet tablet,final Toaster toaster) {
-        guiAdapterABC=new GuiAdapterABC(tablet.group.model) {
+        guiAdapterABC=new GuiAdapterABC(tablet) {
             @Override
             public void setButtonText(final int id,final String string) {
                 new Timer().schedule(new TimerTask() {
@@ -122,6 +125,7 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
         logger.info("android id: '"+android_id+"'");
         if(!isNetworkAvailable())
             System.out.println("network is not available!");
+        IO.printNetworkInterfaces();
         ((Audio.Android)Main.audio).setCallback(new Android.Callback<Sound>() {
             @Override
             public void call(Sound sound) {
@@ -134,8 +138,8 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
         Integer tabletId=Group.androidIds.get(android_id);
         if(tabletId==null)
             tabletId=100;
-        final Group group=new Group(1,Group.tabletsFive);
-        String host=group.idToHost().get(tabletId);
+        final Group group=new Group(1,Group.g0);
+        String host=group.info(tabletId).host;
         System.out.println("host="+host);
         tablet=new Tablet(group,tabletId);
         System.out.println("tablet: "+tablet);
@@ -180,13 +184,14 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
         initialize();
         tablet.startListening();
         tablet.group.model.addObserver(this);
+        Main.sound=false;
         setContentView(layout);
     }
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         logger.info("on create options menu");
         super.onCreateOptionsMenu(menu);
-        for(TabletMenuItem menuItem : TabletMenuItem.values())
+        for(Tablet.MenuItem menuItem : Tablet.MenuItem.values())
             menu.add(Menu.NONE,menuItem.ordinal(),Menu.NONE,menuItem.name());
         //getMenuInflater().inflate(R.menu.menu_main,menu);
         return true;
@@ -195,10 +200,16 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
     public boolean onOptionsItemSelected(MenuItem item) {
         logger.info("item: "+item);
         int id=item.getItemId();
-        TabletMenuItem.doItem(id,tablet);
+        Tablet.MenuItem.doItem(id,tablet);
         if(id==R.id.action_settings)
             return true;
         return super.onOptionsItemSelected(item);
+    }
+    @Override
+    protected void onDestroy() {
+        if(tablet!=null) tablet.stopListening();
+        else System.out.println("tablet is null in on destroy!");
+        super.onDestroy();
     }
     int color(int id,boolean state) {
         bg[0]=fg[0]=(float)((id-1)*360./tablet.group.model.buttons);
@@ -212,8 +223,8 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
             int id=button.getId();
             boolean state=tablet.group.model.state(id);
             tablet.group.model.setState(id,!state);
-            com.tayek.tablet.model.Message message=new com.tayek.tablet.model.Message(tablet.group.groupId,tablet.tabletId,com.tayek.tablet.model.Message.Type.normal,id,tablet.group.model.state(id));
-            tablet.broadcast(message);
+            Message message=new Message(Message.Type.normal,tablet.group.groupId,tablet.tabletId(),id,tablet.group.model.toCharacters());
+            tablet.send(message,0);
             System.out.println("on click: "+id+" "+tablet.group.model+" "+buttonsToString());
             Main.toaster.toast(buttonsToString());
         } else
