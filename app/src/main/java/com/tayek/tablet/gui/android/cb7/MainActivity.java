@@ -1,6 +1,7 @@
 package com.tayek.tablet.gui.android.cb7;
 import android.app.*;
 import android.content.*;
+import android.content.pm.*;
 import android.graphics.*;
 import android.media.*;
 import android.net.*;
@@ -8,14 +9,13 @@ import android.os.*;
 import android.provider.Settings.*;
 import android.util.*;
 import android.view.*;
+import android.view.View;
 import android.widget.*;
 
-import com.tayek.io.*;
-import com.tayek.io.Audio.*;
+import com.tayek.tablet.Message;
+import com.tayek.tablet.io.Audio.*;
 import com.tayek.tablet.*;
-import com.tayek.tablet.model.*;
-import com.tayek.tablet.io.gui.common.*;
-import com.tayek.tablet.model.Message;
+import com.tayek.tablet.io.*;
 
 import java.lang.*;
 import java.lang.System;
@@ -30,6 +30,44 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
         NetworkInfo activeNetworkInfo=connectivityManager.getActiveNetworkInfo();
         return activeNetworkInfo!=null&&activeNetworkInfo.isConnected();
     }
+    RelativeLayout buildLayout() { // new gui
+        int size=130;
+        final int rows=2;
+        final int columns=5;
+        final Integer[] colors=new Integer[columns];
+        {
+            colors[0]=Color.RED;
+            colors[1]=Color.YELLOW;
+            colors[2]=Color.GREEN;
+            colors[3]=Color.BLUE;
+            colors[4]=Color.rgb(255,165,0);
+        }
+        int x0=size/4,y0=75;
+        RelativeLayout relativeLayout=new RelativeLayout(this);
+        RelativeLayout.LayoutParams params=new RelativeLayout.LayoutParams(50,50);
+        for(int i=0;i<rows*columns;i++) {
+            Button button=new Button(this);
+            button.setId(i+1);
+            params=new RelativeLayout.LayoutParams(size,size);
+            params.leftMargin=(int)(x0+i%columns*1.2*size);
+            params.topMargin=(int)(y0+i/columns*size*1.2);
+            button.setLayoutParams(params);
+            button.setText(""+i);
+            if(i/columns%2==1)
+                button.setBackgroundColor(colors[i%columns]);
+            relativeLayout.addView(button);
+        }
+        Button reset=new Button(this);
+        reset.setId(0);
+        params=new RelativeLayout.LayoutParams(size,size);
+        params.leftMargin=(int)(x0+(columns+1.2)*size);
+        params.topMargin=y0;
+        reset.setLayoutParams(params);
+        reset.setText("R");
+        relativeLayout.addView(reset);
+        return relativeLayout;
+    }
+
     Integer id(Sound sound) {
         switch(sound) {
             case electronic_chime_kevangc_495939803:
@@ -135,10 +173,15 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
                 mediaPlayer.start();
             }
         });
-        Integer tabletId=Group.androidIds.get(android_id);
+        Integer tabletId=Group.tabletIdFromAndroidId(android_id);
+        logger.info("tablet id: "+tabletId);
+        System.out.println("tablet id: "+tabletId);
+
         if(tabletId==null)
             tabletId=100;
-        final Group group=new Group(1,Group.g0);
+
+        Map<Integer,Group.Info> map=Group.groups.get("g0");
+        Group group=new Group(1,map);
         String host=group.info(tabletId).host;
         System.out.println("host="+host);
         tablet=new Tablet(group,tabletId);
