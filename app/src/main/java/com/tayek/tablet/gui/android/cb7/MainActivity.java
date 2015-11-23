@@ -1,6 +1,7 @@
 package com.tayek.tablet.gui.android.cb7;
 import android.app.*;
 import android.content.*;
+import android.content.pm.*;
 import android.graphics.*;
 import android.media.*;
 import android.net.*;
@@ -38,14 +39,7 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
                 on[i]|=0xff000000;
                 off[i]|=0xff000000;
             }
-            for(Integer i:on)
-                System.out.print(Integer.toString(i,16)+" ");
-            System.out.println();
-            for(Integer i:off)
-                System.out.print(Integer.toString(i,16)+" ");
-            System.out.println();
-            System.out.println("cyan: "+Integer.toString(Color.CYAN,16)+" ");
-            RelativeLayout.LayoutParams params=new RelativeLayout.LayoutParams(50,50);
+            RelativeLayout.LayoutParams params=null;
             for(int i=0;i<rows*columns;i++) {
                 Button button=new Button(activity);
                 button.setId(i);
@@ -99,7 +93,7 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
                                         System.out.println("reset");
                                     } else {
                                         if(index/columns%2==1)
-                                            buttons[index].setBackgroundColor((!state)?on[index%columns]:off[index%columns]);
+                                            buttons[index].setBackgroundColor((state)?on[index%columns]:off[index%columns]);
                                         else;
                                     }
                                 }
@@ -153,6 +147,8 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
+
         setContentView(R.layout.activity_main);
         Main.log.init();
         Main.log.setLevel(Level.ALL);
@@ -191,7 +187,7 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
         setContentView(gui.relativeLayout);
         tablet.startListening();
         tablet.group.model.addObserver(this);
-        Main.sound=false;
+        //Main.sound=false;
     }
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
@@ -223,7 +219,8 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
         if(v instanceof Button) {
             System.out.println("click on "+v);
             Button button=(Button)v;
-            int id=button.getId();
+            int index=button.getId();
+            int id=index+1;
             boolean state=tablet.group.model.state(id);
             tablet.group.model.setState(id,!state);
             Message message=new Message(Message.Type.normal,tablet.group.groupId,tablet.tabletId(),id,tablet.group.model.toCharacters());
