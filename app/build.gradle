@@ -6,7 +6,7 @@ android {
 
     defaultConfig {
         applicationId "com.tayek.tablet.gui.android.cb7"
-        minSdkVersion 22
+        minSdkVersion 21
         targetSdkVersion 23
         versionCode 1
         versionName "1.0"
