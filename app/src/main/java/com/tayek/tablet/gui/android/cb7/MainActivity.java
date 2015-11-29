@@ -5,6 +5,7 @@ import android.content.pm.*;
 import android.graphics.*;
 import android.media.*;
 import android.net.*;
+import android.net.wifi.*;
 import android.os.*;
 import android.provider.Settings.*;
 import android.util.*;
@@ -20,7 +21,9 @@ import static com.tayek.tablet.io.IO.*;
 
 import java.lang.*;
 import java.lang.System;
+import java.math.*;
 import java.net.*;
+import java.nio.*;
 import java.util.*;
 import java.util.logging.*;
 //https://plus.google.com/103583939320326217147/posts/BQ5iYJEaaEH driver for usb
@@ -85,10 +88,30 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
         mediaPlayer=MediaPlayer.create(MainActivity.this,id);
         mediaPlayer.start();
     }
+    String getIpAddress() {
+        WifiManager wifiMan = (WifiManager) getSystemService(Context.WIFI_SERVICE);
+        WifiInfo wifiInf = wifiMan.getConnectionInfo();
+        int ipAddress = wifiInf.getIpAddress();
+        p("ipaddress: "+ipAddress+" "+Integer.toString(ipAddress,16));
+        if (ByteOrder.nativeOrder().equals(ByteOrder.LITTLE_ENDIAN))
+            ipAddress = Integer.reverseBytes(ipAddress);
+        byte[] ipByteArray = BigInteger.valueOf(ipAddress).toByteArray();
+        String ipAddressString=null;
+        try {
+            ipAddressString = InetAddress.getByAddress(ipByteArray).getHostAddress();
+        } catch (UnknownHostException ex) {
+            Log.e("WIFIIP", "Unable to get host address.");
+            ipAddressString = null;
+        }
+        return ipAddressString;
+    }
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         Main.log.init();
+        Main.log.setLevel(Level.ALL);
+        String ipAddressString=getIpAddress();
+        p("ipaddress: "+ipAddressString);
         setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
         DisplayMetrics metrics=new DisplayMetrics();
         getWindowManager().getDefaultDisplay().getMetrics(metrics);
@@ -105,11 +128,25 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
             }
         });
         sound();
-        Main.log.setLevel(Level.ALL);
         Map<Integer,Group.Info> info=Groups.groups.get("g0");
         p("info: "+info);
-        Group group=new Group(1,Main.host,info);
-        int tabletId=Main.setup(group);
+        //int tabletId=Main.setup();
+        Group group=new Group(1,info);
+        Integer tabletId=null;
+        for(int i:group.tablets())
+            if(group.info(i)!=null) {
+                if(group.info(i).host.equals(ipAddressString)) {
+                    p("i could be tablet: "+i);
+                    tabletId=i;
+                }
+            } else logger.severe("get("+i+") is null!");
+        if(tabletId==null) tabletId=group.maxTabletId+1;
+        for(int i:group.tablets()) {
+            SocketAddress socketAddress=null;
+            socketAddress=new InetSocketAddress(group.info(i).host,Main.receivePort);
+            group.socketAddresses.put(i,socketAddress);
+        }
+
         tablet=new Tablet(group,tabletId,new Model(11));
         tablet.startListening();
         tablet.model.addObserver(this);
