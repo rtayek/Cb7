@@ -89,19 +89,19 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
         mediaPlayer.start();
     }
     String getIpAddress() {
-        WifiManager wifiMan = (WifiManager) getSystemService(Context.WIFI_SERVICE);
-        WifiInfo wifiInf = wifiMan.getConnectionInfo();
-        int ipAddress = wifiInf.getIpAddress();
+        WifiManager wifiMan=(WifiManager)getSystemService(Context.WIFI_SERVICE);
+        WifiInfo wifiInf=wifiMan.getConnectionInfo();
+        int ipAddress=wifiInf.getIpAddress();
         p("ipaddress: "+ipAddress+" "+Integer.toString(ipAddress,16));
-        if (ByteOrder.nativeOrder().equals(ByteOrder.LITTLE_ENDIAN))
-            ipAddress = Integer.reverseBytes(ipAddress);
-        byte[] ipByteArray = BigInteger.valueOf(ipAddress).toByteArray();
+        if(ByteOrder.nativeOrder().equals(ByteOrder.LITTLE_ENDIAN))
+            ipAddress=Integer.reverseBytes(ipAddress);
+        byte[] ipByteArray=BigInteger.valueOf(ipAddress).toByteArray();
         String ipAddressString=null;
         try {
-            ipAddressString = InetAddress.getByAddress(ipByteArray).getHostAddress();
-        } catch (UnknownHostException ex) {
-            Log.e("WIFIIP", "Unable to get host address.");
-            ipAddressString = null;
+            ipAddressString=InetAddress.getByAddress(ipByteArray).getHostAddress();
+        } catch(UnknownHostException ex) {
+            Log.e("WIFIIP","Unable to get host address.");
+            ipAddressString=null;
         }
         return ipAddressString;
     }
@@ -128,29 +128,10 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
             }
         });
         sound();
-        Map<Integer,Group.Info> info=Groups.groups.get("g0");
-        p("info: "+info);
-        //int tabletId=Main.setup();
-        Group group=new Group(1,info);
-        Integer tabletId=null;
-        for(int i:group.tablets())
-            if(group.info(i)!=null) {
-                if(group.info(i).host.equals(ipAddressString)) {
-                    p("i could be tablet: "+i);
-                    tabletId=i;
-                }
-            } else logger.severe("get("+i+") is null!");
-        if(tabletId==null) tabletId=group.maxTabletId+1;
-        for(int i:group.tablets()) {
-            SocketAddress socketAddress=null;
-            socketAddress=new InetSocketAddress(group.info(i).host,Main.receivePort);
-            group.socketAddresses.put(i,socketAddress);
-        }
-
-        tablet=new Tablet(group,tabletId,new Model(11));
-        tablet.startListening();
+        tablet=Main.getTablet(ipAddressString);
         tablet.model.addObserver(this);
         tablet.model.addObserver(new AudioObserver(tablet.model));
+        tablet.startListening();
         Toaster toaster=new Toaster() {
             @Override
             public void toast(String string) {
