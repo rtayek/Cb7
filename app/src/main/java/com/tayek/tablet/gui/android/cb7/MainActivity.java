@@ -3,6 +3,8 @@ import android.app.*;
 import android.content.*;
 import android.content.pm.*;
 import android.graphics.*;
+import android.graphics.drawable.*;
+import android.graphics.drawable.shapes.*;
 import android.media.*;
 import android.net.*;
 import android.net.wifi.*;
@@ -17,7 +19,10 @@ import com.tayek.tablet.Message;
 import com.tayek.tablet.io.Audio.*;
 import com.tayek.tablet.*;
 import com.tayek.tablet.io.*;
+import com.tayek.tablet.io.Audio.Bndroid;
+
 import static com.tayek.tablet.io.IO.*;
+import static java.lang.Math.round;
 
 import java.lang.*;
 import java.lang.System;
@@ -29,6 +34,40 @@ import java.util.logging.*;
 //https://plus.google.com/103583939320326217147/posts/BQ5iYJEaaEH driver for usb
 //http://davidrs.com/wp/fix-android-device-not-showing-up-on-windows-8/
 public class MainActivity extends Activity implements Observer, View.OnClickListener {
+    public class DrawableView extends View {
+        public DrawableView(Context context,int i,boolean isRow1) {
+            super(context);
+            int r=(int)round(w*radius);
+            d0=new ShapeDrawable(new RoundRectShape(new float[]{r,r,r,r,r,r,r,r},null,null));
+            d0.getPaint().setColor(0xff000000);
+            d0.setBounds(0,0,w,d);
+            d1=new ShapeDrawable(new RoundRectShape(new float[]{r,r,r,r,r,r,r,r},null,null));
+            d1.getPaint().setColor(on[i]);
+            d1.setBounds(edge,edge,w-edge,d-edge);
+            d2=new ShapeDrawable(new RoundRectShape(new float[]{r,r,r,r,r,r,r,r},null,null));
+            int b=(int)round(w*border);
+            d2.setBounds(b/2,b/2,w-b/2,d-b/2);
+            d2.getPaint().setColor(isRow1?on[i]:off[i]);
+        }
+        protected void onDraw(Canvas canvas) {
+            d0.draw(canvas);
+            d1.draw(canvas);
+            d2.draw(canvas);
+        }
+        ShapeDrawable d0, d1, d2;
+    }
+    LinearLayout row(boolean isRow1) {
+        LinearLayout layout=new LinearLayout(this);
+        layout.setOrientation(LinearLayout.HORIZONTAL);
+        LinearLayout.LayoutParams layoutParams=new LinearLayout.LayoutParams(w,d);
+        int m=(int)round(w*margin);
+        layoutParams.setMargins(m,m,m,m);
+        for(int i=0;i<n;i++) {
+            drawableView=new DrawableView(this,i,isRow1);
+            layout.addView(drawableView,layoutParams);
+        }
+        return layout;
+    }
     GuiAdapterABC adapter(Tablet tablet) {
         guiAdapterABC=new GuiAdapterABC(tablet) {
             @Override
@@ -83,7 +122,7 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
         }
     }
     void sound() {
-        Main.sound=true;
+        Audio.Instance.sound=true;
         int id=R.raw.electronic_chime_kevangc_495939803;
         mediaPlayer=MediaPlayer.create(MainActivity.this,id);
         mediaPlayer.start();
@@ -108,17 +147,15 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        Main.log.init();
-        Main.log.setLevel(Level.ALL);
-        String ipAddressString=getIpAddress();
-        p("ipaddress: "+ipAddressString);
+        Main.instance().init();
+        Main.instance().setLevel(Level.ALL);
         setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
         DisplayMetrics metrics=new DisplayMetrics();
         getWindowManager().getDefaultDisplay().getMetrics(metrics);
         System.out.println(metrics);
         setContentView(R.layout.activity_main);
         String android_id=Secure.getString(getContentResolver(),Secure.ANDROID_ID);
-        ((Android)Main.audio).setCallback(new Android.Callback<Sound>() {
+        ((Audio.Bndroid)Audio.audio).setCallback(new Callback<Audio.Sound>() {
             @Override
             public void call(Sound sound) {
                 System.out.println("playing sound.");
@@ -128,25 +165,27 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
             }
         });
         sound();
-        tablet=Main.getTablet(ipAddressString);
+        IO io=new IO("192.168.0.");
+        Group group=new Group(io,1,Group.groups.get("g0"));
+        tablet=group.getTablet();
         tablet.model.addObserver(this);
         tablet.model.addObserver(new AudioObserver(tablet.model));
-        tablet.startListening();
-        Toaster toaster=new Toaster() {
+        tablet.group.io.startListening(tablet);
+        ((Toaster.Android_)Toaster.toaster).setCallback(new Callback<String>() {
             @Override
-            public void toast(String string) {
-                Toast.makeText(MainActivity.this,string,Toast.LENGTH_SHORT).show();
-            }
-        };
-        Main.toaster=new Toaster() {
-            @Override
-            public void toast(final String string) {
+            public void call(final String string) {
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
                         Toast.makeText(MainActivity.this,string,Toast.LENGTH_SHORT).show();
                     }
                 });
+            }
+        });
+        Toaster toaster=new Toaster() {
+            @Override
+            public void toast(String string) {
+                Toast.makeText(MainActivity.this,string,Toast.LENGTH_SHORT).show();
             }
         };
         final int size=140;
@@ -183,11 +222,6 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
         guiAdapterABC=adapter(tablet);
         relativeLayout.setBackgroundColor(colors.background|0xff000000);
         setContentView(relativeLayout);
-        SocketAddress socketAddress=tablet.group.socketAddresses.get(tablet.tabletId());
-        if(socketAddress==null) {
-            logger.severe("socket address is null!");
-            return;
-        }
     }
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
@@ -210,9 +244,9 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
     }
     @Override
     protected void onDestroy() {
-        Main.stop();
+        //Main.stop();
         if(tablet!=null)
-            tablet.stopListening();
+            tablet.group.io.stopListening(tablet);
         else
             System.out.println("tablet is null in on destroy!");
         super.onDestroy();
@@ -229,7 +263,7 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
             Message message=new Message(Message.Type.normal,tablet.group.groupId,tablet.tabletId(),id,tablet.model.toCharacters());
             tablet.send(message,0);
             System.out.println("on click: "+id+" "+tablet.model+" "+buttonsToString());
-            Main.toaster.toast(buttonsToString());
+            Toaster.toaster.toast(buttonsToString());
         } else
             logger.warning("not a button!");
     }
@@ -246,5 +280,12 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
     TextView bottom; // was used for messages, put it back
     final Colors colors=new Colors();
     Button[] buttons=new Button[colors.n];
+    // new gui stuff
+    final int n=5, edge=1;
+    double margin=.10, radius=.05, border=.15;
+    int w, d;
+    final int[] on=new int[]{0xffff0000,0xffffff00,0xff00ff00,0xff0000ff,0xffff8000};
+    final int[] off=new int[]{0xffff0000,0xffffff00,0xff00ff00,0xff0000ff,0xffff8000};
+    DrawableView drawableView;
     final Logger logger=Logger.getLogger(getClass().getName());
 }
