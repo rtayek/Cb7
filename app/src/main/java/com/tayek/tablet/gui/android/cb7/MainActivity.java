@@ -147,8 +147,7 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        Main.instance().init();
-        Main.instance().setLevel(Level.ALL);
+        LoggingHandler.setLevel(Level.ALL);
         setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
         DisplayMetrics metrics=new DisplayMetrics();
         getWindowManager().getDefaultDisplay().getMetrics(metrics);
@@ -254,16 +253,20 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
     @Override
     public void onClick(final View v) {
         if(v instanceof Button) {
-            System.out.println("click on "+v);
             Button button=(Button)v;
             int index=button.getId();
             int id=index+1;
-            boolean state=tablet.model.state(id);
-            tablet.model.setState(id,!state);
-            Message message=new Message(Message.Type.normal,tablet.group.groupId,tablet.tabletId(),id,tablet.model.toCharacters());
-            tablet.send(message,0);
-            System.out.println("on click: "+id+" "+tablet.model+" "+buttonsToString());
-            Toaster.toaster.toast(buttonsToString());
+            if(index==colors.rows*colors.columns) {
+                tablet.model.reset();
+                Message message=Message.reset(tablet.group.groupId,tablet.tabletId(),id);
+                tablet.send(message,0);
+            } else {
+                Boolean state=!tablet.model.state(id);
+                tablet.model.setState(id,state);
+                Message message=new Message(Message.Type.normal,tablet.group.groupId,tablet.tabletId(),id,tablet.model.toCharacters());
+                tablet.send(message,0);
+                Toaster.toaster.toast(buttonsToString());
+            }
         } else
             logger.warning("not a button!");
     }
