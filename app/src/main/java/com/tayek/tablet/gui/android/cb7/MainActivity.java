@@ -34,40 +34,6 @@ import java.util.logging.*;
 //https://plus.google.com/103583939320326217147/posts/BQ5iYJEaaEH driver for usb
 //http://davidrs.com/wp/fix-android-device-not-showing-up-on-windows-8/
 public class MainActivity extends Activity implements Observer, View.OnClickListener {
-    public class DrawableView extends View {
-        public DrawableView(Context context,int i,boolean isRow1) {
-            super(context);
-            int r=(int)round(w*radius);
-            d0=new ShapeDrawable(new RoundRectShape(new float[]{r,r,r,r,r,r,r,r},null,null));
-            d0.getPaint().setColor(0xff000000);
-            d0.setBounds(0,0,w,d);
-            d1=new ShapeDrawable(new RoundRectShape(new float[]{r,r,r,r,r,r,r,r},null,null));
-            d1.getPaint().setColor(on[i]);
-            d1.setBounds(edge,edge,w-edge,d-edge);
-            d2=new ShapeDrawable(new RoundRectShape(new float[]{r,r,r,r,r,r,r,r},null,null));
-            int b=(int)round(w*border);
-            d2.setBounds(b/2,b/2,w-b/2,d-b/2);
-            d2.getPaint().setColor(isRow1?on[i]:off[i]);
-        }
-        protected void onDraw(Canvas canvas) {
-            d0.draw(canvas);
-            d1.draw(canvas);
-            d2.draw(canvas);
-        }
-        ShapeDrawable d0, d1, d2;
-    }
-    LinearLayout row(boolean isRow1) {
-        LinearLayout layout=new LinearLayout(this);
-        layout.setOrientation(LinearLayout.HORIZONTAL);
-        LinearLayout.LayoutParams layoutParams=new LinearLayout.LayoutParams(w,d);
-        int m=(int)round(w*margin);
-        layoutParams.setMargins(m,m,m,m);
-        for(int i=0;i<n;i++) {
-            drawableView=new DrawableView(this,i,isRow1);
-            layout.addView(drawableView,layoutParams);
-        }
-        return layout;
-    }
     GuiAdapterABC adapter(Tablet tablet) {
         guiAdapterABC=new GuiAdapterABC(tablet) {
             @Override
@@ -127,7 +93,7 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
         mediaPlayer=MediaPlayer.create(MainActivity.this,id);
         mediaPlayer.start();
     }
-    String getIpAddress() {
+    String getIpAddress() { // unused
         WifiManager wifiMan=(WifiManager)getSystemService(Context.WIFI_SERVICE);
         WifiInfo wifiInf=wifiMan.getConnectionInfo();
         int ipAddress=wifiInf.getIpAddress();
@@ -164,12 +130,27 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
             }
         });
         sound();
-        IO io=new IO("192.168.0.");
-        Group group=new Group(io,1,Group.groups.get("g0"));
-        tablet=group.getTablet();
+        Thread thread=new Thread(new Runnable() {
+            @Override
+            public void run() {
+                ;
+            }
+        },"get local host");
+        thread.start();
+        InetAddress inetAddress=null;
+        try {
+            InetAddress.getLocalHost();
+        } catch(UnknownHostException e) {
+            Toast.makeText(MainActivity.this,"caught: "+e,Toast.LENGTH_LONG).show();
+            e.printStackTrace();
+        }
+        Group group=new Group(inetAddress,1,Group.groups.get("g0"));
+        tablet=group.getTablet(inetAddress);
+        Toast.makeText(MainActivity.this,"tablet: "+tablet,Toast.LENGTH_SHORT).show();
         tablet.model.addObserver(this);
         tablet.model.addObserver(new AudioObserver(tablet.model));
         tablet.group.io.startListening(tablet);
+        System.out.println("set toast callback.");
         ((Toaster.Android_)Toaster.toaster).setCallback(new Callback<String>() {
             @Override
             public void call(final String string) {
@@ -181,12 +162,7 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
                 });
             }
         });
-        Toaster toaster=new Toaster() {
-            @Override
-            public void toast(String string) {
-                Toast.makeText(MainActivity.this,string,Toast.LENGTH_SHORT).show();
-            }
-        };
+        System.out.println("build gui.");
         final int size=140;
         System.out.println(size+" "+(metrics.widthPixels*1./7));
         final int x0=size/4, y0=75;
@@ -255,20 +231,9 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
         if(v instanceof Button) {
             Button button=(Button)v;
             int index=button.getId();
-            int id=index+1;
-            if(index==colors.rows*colors.columns) {
-                tablet.model.reset();
-                Message message=Message.reset(tablet.group.groupId,tablet.tabletId(),id);
-                tablet.send(message,0);
-            } else {
-                Boolean state=!tablet.model.state(id);
-                tablet.model.setState(id,state);
-                Message message=new Message(Message.Type.normal,tablet.group.groupId,tablet.tabletId(),id,tablet.model.toCharacters());
-                tablet.send(message,0);
-                Toaster.toaster.toast(buttonsToString());
-            }
+            guiAdapterABC.processClick(index);
         } else
-            logger.warning("not a button!");
+            logger.severe("not a button!");
     }
     @Override
     public void update(Observable o,Object hint) {
@@ -283,12 +248,5 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
     TextView bottom; // was used for messages, put it back
     final Colors colors=new Colors();
     Button[] buttons=new Button[colors.n];
-    // new gui stuff
-    final int n=5, edge=1;
-    double margin=.10, radius=.05, border=.15;
-    int w, d;
-    final int[] on=new int[]{0xffff0000,0xffffff00,0xff00ff00,0xff0000ff,0xffff8000};
-    final int[] off=new int[]{0xffff0000,0xffffff00,0xff00ff00,0xff0000ff,0xffff8000};
-    DrawableView drawableView;
     final Logger logger=Logger.getLogger(getClass().getName());
 }

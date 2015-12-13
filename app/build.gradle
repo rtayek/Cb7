@@ -1,15 +1,17 @@
 apply plugin: 'com.android.application'
-
 android {
     compileSdkVersion 23
     buildToolsVersion "23.0.1"
-
+    lintOptions {
+        abortOnError false
+    }
     defaultConfig {
         applicationId "com.tayek.tablet.gui.android.cb7"
         minSdkVersion 17
         targetSdkVersion 23
         versionCode 1
         versionName "1.0"
+        testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
     }
     buildTypes {
         release {
@@ -18,8 +20,10 @@ android {
         }
     }
 }
-
 dependencies {
     compile fileTree(include: ['*.jar'], dir: 'libs')
+    testCompile 'junit:junit:4.12'
+    androidTestCompile 'junit:junit:4.12'
+    androidTestCompile 'com.android.support.test:runner:0.4.1'
     //compile files('libs/rabbit.jar')
 }
