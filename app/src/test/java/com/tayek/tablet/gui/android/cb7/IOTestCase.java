@@ -4,6 +4,7 @@ import java.net.InetAddress;
 import java.util.concurrent.*;
 import org.junit.*;
 
+import com.tayek.tablet.gui.android.cb7.*;
 import com.tayek.tablet.io.*;
 import com.tayek.tablet.io.IO.*;
 import static com.tayek.tablet.io.IO.*;
@@ -17,7 +18,7 @@ public class IOTestCase {
     @Test public void testGetByName() throws InterruptedException,ExecutionException {
         GetByNameCallable task=new GetByNameCallable("192.168.1.2");
         InetAddress inetAddress=runAndWait(task);
-        //p("inetAddress: "+inetAddress);
+        p("inetAddress: "+inetAddress);
     }
     @Test public void testGetNetworkInterfacesWithHost() throws InterruptedException, ExecutionException {
         InetAddress inetAddress=IO.runAndWait(new GetNetworkInterfacesCallable("192.168.1.2"));
