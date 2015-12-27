@@ -91,8 +91,9 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
         tablet.model.addObserver(this);
         tablet.model.addObserver(new AudioObserver(tablet.model));
         tablet.group.io.startListening(tablet);
+        buttons=new Button[tablet.colors.n];
         RelativeLayout relativeLayout=builGui();
-        relativeLayout.setBackgroundColor(colors.background|0xff000000);
+        relativeLayout.setBackgroundColor(tablet.colors.background|0xff000000);
         guiAdapterABC=new GuiAdapterABC(tablet) {
             @Override
             public void setButtonText(final int id,final String string) {
@@ -108,7 +109,7 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
-                        buttons[id-1].setBackgroundColor(colors.aColor(id-1,state));
+                        buttons[id-1].setBackgroundColor(tablet.colors.aColor(id-1,state));
                     }
                 });
             }
@@ -125,8 +126,8 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
         final int x0=size/4, y0=75;
         RelativeLayout relativeLayout=new RelativeLayout(this);
         RelativeLayout.LayoutParams params=null;
-        final int rows=colors.rows;
-        final int columns=colors.columns;
+        final int rows=tablet.colors.rows;
+        final int columns=tablet.colors.columns;
         for(int i=0;i<rows*columns;i++) {
             Button button=new Button(this);
             button.setId(i); // id is index!
@@ -137,8 +138,8 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
             params.topMargin=(int)(y0+i/columns*size*1.2);
             button.setLayoutParams(params);
             if(i/columns%2==0)
-            button.setText(i/columns%2==0?(""+(i+1)):"");
-            button.setBackgroundColor(colors.aColor(i,false));
+            button.setText(tablet.getButtonText(i+1));
+            button.setBackgroundColor(tablet.colors.aColor(i,false));
             button.setOnClickListener(this);
             buttons[i]=button;
             relativeLayout.addView(button);
@@ -151,8 +152,8 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
         params.leftMargin=(int)(x0+(columns+1.2)*size);
         params.topMargin=y0;
         button.setLayoutParams(params);
-        button.setText("R");
-        button.setBackgroundColor(colors.aColor(rows*columns,false));
+        button.setText(tablet.getButtonText(tablet.model.resetButtonId));
+        button.setBackgroundColor(tablet.colors.aColor(rows*columns,false));
         button.setOnClickListener(this);
         buttons[rows*columns]=button;
         relativeLayout.addView(button);
@@ -224,8 +225,7 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
     Tablet tablet;
     MediaPlayer mediaPlayer;
     TextView bottom; // was used for messages, put it back
-    final Colors colors=new Colors();
-    final Button[] buttons=new Button[colors.n];
+    Button[] buttons;
     final Logger l=Logger.getLogger(getClass().getName());
     final static Logger staticLogger=Logger.getLogger(MainActivity.class.getName());
 }
