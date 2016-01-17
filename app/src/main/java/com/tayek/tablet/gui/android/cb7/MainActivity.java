@@ -34,6 +34,21 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
         LoggingHandler.setLevel(Level.ALL);
         setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
         p("get ip address from wifi manager says: "+getIpAddressFromWifiManager(this));
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    InetAddress localHost=InetAddress.getLocalHost();
+                    p("local: "+localHost);
+                    String host=localHost.getHostName();
+                    p("host: "+host);
+                    InetAddress inetAddress=InetAddress.getByName(host);
+                    p("address: "+inetAddress);
+                } catch(UnknownHostException e) {
+                    p("caught: "+e);
+                }
+            }
+        }).start();
         setContentView(R.layout.activity_main);
         p("android id: "+Secure.getString(getContentResolver(),Secure.ANDROID_ID));
         ((Audio.Bndroid)Audio.audio).setCallback(new Callback<Audio.Sound>() {
@@ -128,6 +143,7 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
         RelativeLayout.LayoutParams params=null;
         final int rows=tablet.colors.rows;
         final int columns=tablet.colors.columns;
+        Objects.toString(new Integer(0)); // hack
         for(int i=0;i<rows*columns;i++) {
             Button button=new Button(this);
             button.setId(i); // id is index!
@@ -138,7 +154,7 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
             params.topMargin=(int)(y0+i/columns*size*1.2);
             button.setLayoutParams(params);
             if(i/columns%2==0)
-            button.setText(tablet.getButtonText(i+1));
+                button.setText(tablet.getButtonText(new Integer(i+1)/*wtf?*/));
             button.setBackgroundColor(tablet.colors.aColor(i,false));
             button.setOnClickListener(this);
             buttons[i]=button;

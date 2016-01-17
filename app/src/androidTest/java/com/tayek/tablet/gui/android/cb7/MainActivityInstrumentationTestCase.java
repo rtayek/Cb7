@@ -27,7 +27,7 @@ public class MainActivityInstrumentationTestCase extends ActivityInstrumentation
     }
     @Test
     public void testForSanity() {
-        assertEquals(mainActivity.colors.n,mainActivity.buttons.length);
+        assertEquals(mainActivity.tablet.colors.n,mainActivity.buttons.length);
     }
     MainActivity mainActivity;
 }

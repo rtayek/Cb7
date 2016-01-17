@@ -1,5 +1,9 @@
 apply plugin: 'com.android.application'
 android {
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_7
+        targetCompatibility JavaVersion.VERSION_1_7
+    }
     compileSdkVersion 23
     buildToolsVersion "23.0.1"
     lintOptions {
@@ -7,8 +11,8 @@ android {
     }
     defaultConfig {
         applicationId "com.tayek.tablet.gui.android.cb7"
-        minSdkVersion 17
-        targetSdkVersion 23
+        minSdkVersion 17 // try 19 - 19 does not work :(
+        targetSdkVersion 22 // was 23. http://stackoverflow.com/questions/4568267/android-min-sdk-version-vs-target-sdk-version/4568358#4568358
         versionCode 1
         versionName "1.0"
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
@@ -27,4 +31,5 @@ dependencies {
     androidTestCompile 'com.android.support.test:runner:0.4.1'
     //compile files('libs/rabbit.jar')
     compile files('libs/rabbit-1.0.jar') // not using maven local or flat dirs (yet)
+    //runtime files('libs/rabbit-1.0.jar') // try to fix NoClassDefFoundError // does not work
 }
