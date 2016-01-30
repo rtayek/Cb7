@@ -24,7 +24,9 @@ android {
         }
     }
 }
+def jdkHome = System.getenv("JAVA_HOME")
 dependencies {
+    //compile files("${jdkHome}/lib/tools.jar") // who needs this?
     compile fileTree(include: ['*.jar'], dir: 'libs')
     testCompile 'junit:junit:4.12'
     androidTestCompile 'junit:junit:4.12'

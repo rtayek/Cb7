@@ -1,9 +1,11 @@
 package com.tayek.tablet.gui.android.cb7;
 import static org.junit.Assert.*;
 import java.net.InetAddress;
+import java.util.*;
 import java.util.concurrent.*;
 import org.junit.*;
 
+import com.tayek.tablet.*;
 import com.tayek.tablet.gui.android.cb7.*;
 import com.tayek.tablet.io.*;
 import com.tayek.tablet.io.IO.*;
@@ -20,20 +22,20 @@ public class IOTestCase {
         InetAddress inetAddress=runAndWait(task);
         p("inetAddress: "+inetAddress);
     }
-    @Test public void testGetNetworkInterfacesWithHost() throws InterruptedException, ExecutionException {
-        InetAddress inetAddress=IO.runAndWait(new GetNetworkInterfacesCallable("192.168.1.2"));
-        p("inetAddress: "+inetAddress);
+    @Test public void testGetNetworkInterfacesWithNetworkPrefix() throws InterruptedException, ExecutionException {
+        Set<InetAddress> inetAddresses=IO.runAndWait(new GetNetworkInterfacesCallable(Main.networkPrefix));
+        p("inetAddress: "+inetAddresses);
     }
-    @Test public void testGetNetworkInterfacesWithPrefix() throws InterruptedException, ExecutionException {
-        InetAddress inetAddress=IO.runAndWait(new GetNetworkInterfacesCallable("192.168.1."));
-        p("inetAddress: "+inetAddress);
+    @Test public void testGetNetworkInterfacesWithShorterPrefix() throws InterruptedException, ExecutionException {
+        Set<InetAddress> inetAddresses=IO.runAndWait(new GetNetworkInterfacesCallable("192.168."));
+        p("inetAddress: "+inetAddresses);
     }
-    @Test public void testGetNetworkInterfacesWithLess() throws InterruptedException, ExecutionException {
-        InetAddress inetAddress=IO.runAndWait(new GetNetworkInterfacesCallable("192."));
-        p("inetAddress: "+inetAddress);
+    @Test public void testGetNetworkInterfacesShortPrefix() throws InterruptedException, ExecutionException {
+        Set<InetAddress> inetAddresses=IO.runAndWait(new GetNetworkInterfacesCallable("192."));
+        p("inetAddress: "+inetAddresses);
     }
     @Test public void testGetNetworkInterfacesWithDot() throws InterruptedException, ExecutionException {
-        InetAddress inetAddress=IO.runAndWait(new GetNetworkInterfacesCallable("."));
-        p("inetAddress: "+inetAddress);
+        Set<InetAddress> inetAddresses=IO.runAndWait(new GetNetworkInterfacesCallable("."));
+        p("inetAddress: "+inetAddresses);
     }
 }

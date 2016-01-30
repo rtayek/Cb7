@@ -31,7 +31,16 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        LoggingHandler.setLevel(Level.ALL);
+        LoggingHandler.init();
+        LoggingHandler.setLevel(Level.WARNING);
+        if(true) //
+        try {
+            p("start socket handler");
+            LoggingHandler.startSocketHandler(Main.defaultLogServerHost,LogServer.defaultService);
+            LoggingHandler.addSocketHandler(LoggingHandler.socketHandler);
+        } catch(Exception e) {
+            p("caught: "+e);
+        }
         setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
         p("get ip address from wifi manager says: "+getIpAddressFromWifiManager(this));
         new Thread(new Runnable() {
@@ -78,34 +87,27 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
         ((Toaster.Android_)Toaster.toaster).setCallback(new Callback<String>() {
             @Override
             public void call(final String string) {
+                if(false)
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
                         Toast.makeText(MainActivity.this,string,Toast.LENGTH_SHORT).show();
                     }
                 });
+                else p("toast was: "+string);
             }
         });
         Audio.audio.play(Sound.electronic_chime_kevangc_495939803);
         InetAddress inetAddress=null;
-        try {
-            inetAddress=IO.runAndWait(new GetNetworkInterfacesCallable(IO.defaultNetworkPrefix));
-            // could check for more subnets provided group info stored the entire ip address.
-            // what about the log server host address?
-            if(inetAddress==null) {
-                p("quiting, can not find inet address!");
-                return;
-            }
-        } catch(Exception e) {
-            e.printStackTrace();
-            Toast.makeText(MainActivity.this,"caught: "+e,Toast.LENGTH_LONG).show();
-            throw new RuntimeException(e);
-        }
-        Group group=new Group(1,Group.groups.get("g0"));
-        tablet=group.getTablet(inetAddress,null);
+        Set<InetAddress> addresses = myInetAddress(Main.networkPrefix);
+        p("addresses: "+addresses);
+        if(addresses.size()==0) throw new RuntimeException("oops");
+        Group group=new Group(1,new Group.Groups().groups.get("g0"),Model.mark1,Group.defaultOptions);
+        tablet=group.getTablet(addresses.iterator().next(),null);
+        p("options: "+tablet.group.options);
         tablet.model.addObserver(this);
         tablet.model.addObserver(new AudioObserver(tablet.model));
-        tablet.group.io.startListening(tablet);
+        tablet.startListening(tablet);
         buttons=new Button[tablet.colors.n];
         RelativeLayout relativeLayout=builGui();
         relativeLayout.setBackgroundColor(tablet.colors.background|0xff000000);
@@ -135,15 +137,15 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
         DisplayMetrics metrics=new DisplayMetrics();
         getWindowManager().getDefaultDisplay().getMetrics(metrics);
         System.out.println(metrics);
-        final int size=130;
-        final float fontsize=size*.60f;
+        final int size=225;
+        final float fontsize=size*.30f;
         System.out.println(size+" "+(metrics.widthPixels*1./7));
         final int x0=size/4, y0=75;
         RelativeLayout relativeLayout=new RelativeLayout(this);
         RelativeLayout.LayoutParams params=null;
         final int rows=tablet.colors.rows;
         final int columns=tablet.colors.columns;
-        Objects.toString(new Integer(0)); // hack
+        //Objects.toString(new Integer(0)); // hack
         for(int i=0;i<rows*columns;i++) {
             Button button=new Button(this);
             button.setId(i); // id is index!
@@ -200,13 +202,14 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
         //Main.stop();
         // what should we stop here?
         if(tablet!=null)
-            tablet.group.io.stopListening(tablet);
+            tablet.stopListening(tablet);
         else
             System.out.println("tablet is null in on destroy!");
         super.onDestroy();
     }
     @Override
     public void onClick(final View v) {
+        p("click &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&");
         if(v instanceof Button) {
             Button button=(Button)v;
             int index=button.getId();
