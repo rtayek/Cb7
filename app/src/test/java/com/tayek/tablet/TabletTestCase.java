@@ -43,7 +43,7 @@ public class TabletTestCase extends AbstractTabletTestCase {
         Tablet first=tablets.iterator().next();
         for(int buttoneId=1;buttoneId<=first.model.buttons;buttoneId++) {
             first.model.setState(buttoneId,true);
-            Message message=new Message(Message.Type.normal,first.group.groupId,first.tabletId(),buttoneId,first.model.toCharacters());
+            Message message=Message.normal(first.group.groupId,first.tabletId(),buttoneId,first.model);
             first.broadcast(message,0);
         }
         Thread.sleep(600);
@@ -80,7 +80,8 @@ public class TabletTestCase extends AbstractTabletTestCase {
         Tablet first=tablets.iterator().next();
         for(int buttoneId=1;buttoneId<=first.model.buttons;buttoneId++) {
             first.model.setState(buttoneId,true);
-            Message message=new Message(Message.Type.normal,first.group.groupId,first.tabletId(),buttoneId,first.model.toCharacters());
+            Message message=Message.normal(first.group.groupId,first.tabletId(),buttoneId,first.model);
+
             first.broadcast(message,0);
         }
         for(int buttoneId=1;buttoneId<=first.model.buttons;buttoneId++)
