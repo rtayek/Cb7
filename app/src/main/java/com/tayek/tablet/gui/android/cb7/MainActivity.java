@@ -34,13 +34,13 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
         LoggingHandler.init();
         LoggingHandler.setLevel(Level.WARNING);
         if(true) //
-        try {
-            p("start socket handler");
-            LoggingHandler.startSocketHandler(Main.defaultLogServerHost,LogServer.defaultService);
-            LoggingHandler.addSocketHandler(LoggingHandler.socketHandler);
-        } catch(Exception e) {
-            p("caught: "+e);
-        }
+            try {
+                p("start socket handler");
+                LoggingHandler.startSocketHandler(Main.defaultLogServerHost,LogServer.defaultService);
+                LoggingHandler.addSocketHandler(LoggingHandler.socketHandler);
+            } catch(Exception e) {
+                p("caught: "+e);
+            }
         setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
         p("get ip address from wifi manager says: "+getIpAddressFromWifiManager(this));
         new Thread(new Runnable() {
@@ -88,20 +88,22 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
             @Override
             public void call(final String string) {
                 if(false)
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        Toast.makeText(MainActivity.this,string,Toast.LENGTH_SHORT).show();
-                    }
-                });
-                else p("toast was: "+string);
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            Toast.makeText(MainActivity.this,string,Toast.LENGTH_SHORT).show();
+                        }
+                    });
+                else
+                    p("toast was: "+string);
             }
         });
         Audio.audio.play(Sound.electronic_chime_kevangc_495939803);
         InetAddress inetAddress=null;
-        Set<InetAddress> addresses = myInetAddress(Main.networkPrefix);
+        Set<InetAddress> addresses=myInetAddress(Main.networkPrefix);
         p("addresses: "+addresses);
-        if(addresses.size()==0) throw new RuntimeException("oops");
+        if(addresses.size()==0)
+            throw new RuntimeException("oops");
         Group group=new Group(1,new Group.Groups().groups.get("g0"),Model.mark1,Group.defaultOptions);
         tablet=group.getTablet(addresses.iterator().next(),null);
         p("options: "+tablet.group.options);
@@ -191,10 +193,13 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
     public boolean onOptionsItemSelected(MenuItem item) {
         l.info("item: "+item);
         int id=item.getItemId();
-        if(Tablet.MenuItem.isItem(id)) {
-            Tablet.MenuItem.doItem(id,tablet);
-            return true;
-        }
+        if(Tablet.MenuItem.isItem(id))
+            if(Tablet.MenuItem.item(id).equals(Tablet.MenuItem.Quit))
+                finish();
+            else {
+                Tablet.MenuItem.doItem(id,tablet);
+                return true;
+            }
         return super.onOptionsItemSelected(item);
     }
     @Override

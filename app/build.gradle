@@ -32,6 +32,6 @@ dependencies {
     androidTestCompile 'junit:junit:4.12'
     androidTestCompile 'com.android.support.test:runner:0.4.1'
     //compile files('libs/rabbit.jar')
-    compile files('libs/rabbit-1.0.jar') // not using maven local or flat dirs (yet)
+    //compile files('libs/rabbit-1.0.jar') // not using maven local or flat dirs (yet)
     //runtime files('libs/rabbit-1.0.jar') // try to fix NoClassDefFoundError // does not work
 }
