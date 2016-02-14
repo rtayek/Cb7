@@ -73,7 +73,7 @@ public class TabletTestCase extends AbstractTabletTestCase {
     @Test(timeout=2_000) public void test2Real() throws InterruptedException,UnknownHostException,ExecutionException {
         tablets=createForTest(2,offset);
         for(Tablet tablet:tablets)
-            tablet.startListening(tablet);
+            tablet.startListening();
         for(Tablet tablet:tablets)
             tablet.broadcast(Message.dummy(tablet.group.groupId,tablet.tabletId()),0);
         waitForEachTabletToReceiveOneMessageFromEachTablet(false);

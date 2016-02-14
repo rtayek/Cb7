@@ -3,6 +3,7 @@ import android.app.*;
 import android.content.*;
 import android.content.pm.*;
 import android.media.*;
+import android.net.*;
 import android.net.wifi.*;
 import android.os.*;
 import android.provider.Settings.*;
@@ -28,49 +29,47 @@ import java.util.logging.*;
 //https://plus.google.com/103583939320326217147/posts/BQ5iYJEaaEH driver for usb
 //http://davidrs.com/wp/fix-android-device-not-showing-up-on-windows-8/
 public class MainActivity extends Activity implements Observer, View.OnClickListener {
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        LoggingHandler.init();
-        LoggingHandler.setLevel(Level.WARNING);
-        if(true) //
-            try {
-                p("start socket handler");
-                LoggingHandler.startSocketHandler(Main.defaultLogServerHost,LogServer.defaultService);
-                LoggingHandler.addSocketHandler(LoggingHandler.socketHandler);
-            } catch(Exception e) {
-                p("caught: "+e);
+    void alert(String string) {
+        AlertDialog.Builder alert=new AlertDialog.Builder(this);
+        alert.setTitle(string);
+        alert.setMessage(string);
+        alert.setPositiveButton("Ok",new DialogInterface.OnClickListener() {
+            public void onClick(DialogInterface dialog,int whichButton) {
+                //Your action here
             }
-        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
-        p("get ip address from wifi manager says: "+getIpAddressFromWifiManager(this));
+        });
+        l.info("showing alert.");
+        alert.show();
+    }
+    void startSockethandler() {
         new Thread(new Runnable() {
             @Override
             public void run() {
                 try {
-                    InetAddress localHost=InetAddress.getLocalHost();
-                    p("local: "+localHost);
-                    String host=localHost.getHostName();
-                    p("host: "+host);
-                    InetAddress inetAddress=InetAddress.getByName(host);
-                    p("address: "+inetAddress);
-                } catch(UnknownHostException e) {
-                    p("caught: "+e);
+                    l.info("start socket handler");
+                    LoggingHandler.startSocketHandler(Main.defaultLogServerHost,LogServer.defaultService);
+                    if(LoggingHandler.socketHandler!=null)
+                        LoggingHandler.addSocketHandler(LoggingHandler.socketHandler);
+                    l.info("socket handler: "+LoggingHandler.socketHandler);
+                } catch(Exception e) {
+                    l.info("caught: "+e);
                 }
             }
         }).start();
-        setContentView(R.layout.activity_main);
-        p("android id: "+Secure.getString(getContentResolver(),Secure.ANDROID_ID));
-        ((Audio.Bndroid)Audio.audio).setCallback(new Callback<Audio.Sound>() {
+    }
+    void setupAudioPlayer() {
+        ((Audio.Bndroid)Audio.audio).setCallback(new IO.Callback<Audio.Sound>() {
             @Override
-            public void call(Sound sound) {
+            public void call(Audio.Sound sound) {
                 Integer id=id(sound);
+                l.warning("sound: "+sound+", id: "+id);
                 if(id!=null) {
                     mediaPlayer=MediaPlayer.create(MainActivity.this,id);
                     mediaPlayer.start();
                 } else
                     l.warning("id for sound: "+sound+" is null!");
             }
-            Integer id(Sound sound) {
+            Integer id(Audio.Sound sound) {
                 switch(sound) {
                     case electronic_chime_kevangc_495939803:
                         return R.raw.electronic_chime_kevangc_495939803;
@@ -79,12 +78,14 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
                     case store_door_chime_mike_koenig_570742973:
                         return R.raw.store_door_chime_mike_koenig_570742973;
                     default:
-                        staticLogger.warning(""+" "+"default where!");
+                        l.warning(""+" "+"default where!");
                         return null;
                 }
             }
         });
-        ((Toaster.Android_)Toaster.toaster).setCallback(new Callback<String>() {
+    }
+    void setupToast() {
+        ((Toaster.Android_)Toaster.toaster).setCallback(new IO.Callback<String>() {
             @Override
             public void call(final String string) {
                 if(false)
@@ -95,21 +96,70 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
                         }
                     });
                 else
-                    p("toast was: "+string);
+                    l.info("toast was: "+string);
             }
         });
-        Audio.audio.play(Sound.electronic_chime_kevangc_495939803);
-        InetAddress inetAddress=null;
-        Set<InetAddress> addresses=myInetAddress(Main.networkPrefix);
-        p("addresses: "+addresses);
-        if(addresses.size()==0)
-            throw new RuntimeException("oops");
+    }
+    void startTablet(Set<InetAddress> addresses) {
         Group group=new Group(1,new Group.Groups().groups.get("g0"),Model.mark1,Group.defaultOptions);
         tablet=group.getTablet(addresses.iterator().next(),null);
-        p("options: "+tablet.group.options);
+        l.info("options: "+tablet.group.options);
         tablet.model.addObserver(this);
         tablet.model.addObserver(new AudioObserver(tablet.model));
-        tablet.startListening(tablet);
+        tablet.startListening();
+    }
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        LoggingHandler.init();
+        LoggingHandler.setLevel(Level.WARNING);
+        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
+        String ipAddress=getIpAddressFromWifiManager();
+        l.info("get ip address from wifi manager says: "+ipAddress);
+        if(ipAddress==null) {
+            alert("wifi ip address is null!");
+            l.info("sleeping.");
+            try {
+                Thread.sleep(10_000);
+            } catch(InterruptedException e) {
+            }
+            l.info("finish.");
+            finish();
+            l.info("exiting after sleep.");
+            System.exit(0);
+        } else {
+            alert("wifi ip address is: "+ipAddress);
+        }
+        if(false)
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        InetAddress localHost=InetAddress.getLocalHost();
+                        l.info("localhost: "+localHost);
+                        String host=localHost.getHostName();
+                        l.info("host: "+host);
+                        InetAddress inetAddress=InetAddress.getByName(host);
+                        l.info("address: "+inetAddress);
+                    } catch(UnknownHostException e) {
+                        l.info("caught: "+e);
+                    }
+                }
+            }).start();
+        if(true) // need to run this on a thread
+            startSockethandler();
+        setContentView(R.layout.activity_main);
+        l.info("android id: "+Secure.getString(getContentResolver(),Secure.ANDROID_ID));
+        setupAudioPlayer();
+        setupToast();
+        l.info("playing sound.");
+        Audio.audio.play(Audio.Sound.electronic_chime_kevangc_495939803);
+        InetAddress inetAddress=null;
+        Set<InetAddress> addresses=myInetAddress(Main.networkPrefix);
+        l.info("addresses: "+addresses);
+        if(addresses.size()==0)
+            alert("can not get ip address!");
+        startTablet(addresses);
         buttons=new Button[tablet.colors.n];
         RelativeLayout relativeLayout=builGui();
         relativeLayout.setBackgroundColor(tablet.colors.background|0xff000000);
@@ -147,7 +197,6 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
         RelativeLayout.LayoutParams params=null;
         final int rows=tablet.colors.rows;
         final int columns=tablet.colors.columns;
-        //Objects.toString(new Integer(0)); // hack
         for(int i=0;i<rows*columns;i++) {
             Button button=new Button(this);
             button.setId(i); // id is index!
@@ -158,7 +207,7 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
             params.topMargin=(int)(y0+i/columns*size*1.2);
             button.setLayoutParams(params);
             if(i/columns%2==0)
-                button.setText(tablet.getButtonText(new Integer(i+1)/*wtf?*/));
+                button.setText(tablet.getButtonText(Integer.valueOf(i+1)));
             button.setBackgroundColor(tablet.colors.aColor(i,false));
             button.setOnClickListener(this);
             buttons[i]=button;
@@ -194,12 +243,15 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
         l.info("item: "+item);
         int id=item.getItemId();
         if(Tablet.MenuItem.isItem(id))
-            if(Tablet.MenuItem.item(id).equals(Tablet.MenuItem.Quit))
+            if(Tablet.MenuItem.item(id).equals(Tablet.MenuItem.Quit)) {
+                alert("foo");
                 finish();
-            else {
+                l.severe("after finish! &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&");
+            } else {
+                // check here for stuff just for real tablets
                 Tablet.MenuItem.doItem(id,tablet);
                 return true;
-            }
+            } else l.severe(item+" is not atablet men item!");
         return super.onOptionsItemSelected(item);
     }
     @Override
@@ -229,10 +281,43 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
         else
             System.out.println("no gui for model: "+o);
     }
-    static String getIpAddressFromWifiManager(Context context) { // unused
-        WifiManager wifiMan=(WifiManager)context.getSystemService(Context.WIFI_SERVICE);
+    void retry() {
+        WifiManager wifiMan=(WifiManager)getSystemService(Context.WIFI_SERVICE);
+        WifiInfo wifiInf;
+        int ipAddress;List<WifiConfiguration> wifiConfigurations=wifiMan.getConfiguredNetworks();
+        l.info("wifi configurations (all): "+wifiConfigurations.size());
+        for(WifiConfiguration wifiConfiguration : wifiConfigurations) {
+            l.info("wifi configuration status is disabled: "+(wifiConfiguration.status==WifiConfiguration.Status.DISABLED));
+            l.info("wifi configuration toString(): "+wifiConfiguration.toString());
+            if(wifiConfiguration.toString().contains(Main.networkPrefix)) {
+                l.info("found our network: "+wifiConfiguration.toString());
+                int networkId=wifiConfiguration.networkId;
+                boolean ok=wifiMan.disconnect();
+                l.info("disconnect() returns: "+ok);
+                l.info("enabling our network: "+networkId);
+                // https://code.google.com/p/android-developer-preview/issues/detail?id=2218
+                ok=wifiMan.enableNetwork(networkId,true);
+                l.info("enableNetwork() returns: "+ok);
+                l.info("trying to recommect to wifi.");
+                ok=wifiMan.reconnect();
+                l.info("reconnect returns: "+ok);
+                if(ok) {
+                    wifiMan=(WifiManager)getSystemService(Context.WIFI_SERVICE);
+                    wifiInf=wifiMan.getConnectionInfo();
+                    ipAddress=wifiInf.getIpAddress();
+                    l.info("wifi ip adress: "+ipAddress);
+                }
+                break;
+            }
+        }
+    }
+    String getIpAddressFromWifiManager() {
+        WifiManager wifiMan=(WifiManager)getSystemService(Context.WIFI_SERVICE);
+        p("isWifiEnabled() returns: "+wifiMan.isWifiEnabled());
         WifiInfo wifiInf=wifiMan.getConnectionInfo();
+        p("wifi info: "+wifiInf);
         int ipAddress=wifiInf.getIpAddress();
+        p("wifi ip adress: "+ipAddress);
         if(ByteOrder.nativeOrder().equals(ByteOrder.LITTLE_ENDIAN))
             ipAddress=Integer.reverseBytes(ipAddress);
         byte[] ipByteArray=BigInteger.valueOf(ipAddress).toByteArray();
@@ -240,8 +325,8 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
         try {
             ipAddressString=InetAddress.getByAddress(ipByteArray).getHostAddress();
         } catch(UnknownHostException ex) {
-            staticLogger.warning("Unable to get host address.");
-            ipAddressString=null;
+            l.warning("Unable to get host address.");
+            if(true) retry();
         }
         return ipAddressString;
     }

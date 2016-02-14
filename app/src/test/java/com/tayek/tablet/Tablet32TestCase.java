@@ -42,7 +42,7 @@ public class Tablet32TestCase extends AbstractTabletTestCase {
             map.put(i,new Group.Info("T"+i+" on PC",Main.defaultTestingHost,Main.defaultReceivePort+100+offset+i));
         tablets=new Group(1,map,Model.mark1,Group.defaultOptions).create();
         Tablet tablet=tablets.iterator().next();
-        if(!tablet.startListening(tablet)) fail(tablet+" startListening() retuns false!");
+        if(!tablet.startListening()) fail(tablet+" startListening() retuns false!");
         tablet.broadcast(Message.dummy(tablet.group.groupId,tablet.tabletId()),0);
         Thread.sleep(500);
         History history=tablet.group.info(tablet.tabletId()).history;

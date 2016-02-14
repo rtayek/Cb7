@@ -39,7 +39,7 @@ public abstract class AbstractTabletTestCase {
     protected void startListening() {
         Tablet first=tablets.iterator().next();
         for(Tablet tablet:tablets) {
-            if(!tablet.startListening(tablet)) fail(tablet+" startListening() retuns false!");
+            if(!tablet.startListening()) fail(tablet+" startListening() retuns false!");
             assertNotNull(tablet.server);
             assertEquals(first.model.serialNumber,tablet.model.serialNumber);
             assertEquals(first.group.serialNumber,tablet.group.serialNumber);
@@ -108,7 +108,7 @@ public abstract class AbstractTabletTestCase {
     }
     protected void shutdown() {
         for(Tablet tablet:tablets) {
-            if(!tablet.group.executorService.isShutdown()) tablet.group.executorService.shutdown();
+            if(!tablet.executorService.isShutdown()) tablet.executorService.shutdown();
             // don't do this is we are testing and all using the same service.
             tablet.stopListening(tablet);
         }
