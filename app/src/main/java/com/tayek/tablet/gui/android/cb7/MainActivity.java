@@ -29,10 +29,18 @@ import java.util.logging.*;
 //https://plus.google.com/103583939320326217147/posts/BQ5iYJEaaEH driver for usb
 //http://davidrs.com/wp/fix-android-device-not-showing-up-on-windows-8/
 public class MainActivity extends Activity implements Observer, View.OnClickListener {
-    void alert(String string) {
+    final static Logger staticLogger=Logger.getLogger(MainActivity.class.getName());
+    final Logger l=Logger.getLogger(getClass().getName());
+    GuiAdapterABC guiAdapterABC;
+    Tablet tablet;
+    MediaPlayer mediaPlayer;
+    TextView bottom; // was used for messages, put it back
+    Button[] buttons;
+    void alert(String string,boolean cancelable) {
         AlertDialog.Builder alert=new AlertDialog.Builder(this);
         alert.setTitle(string);
         alert.setMessage(string);
+        alert.setCancelable(cancelable);
         alert.setPositiveButton("Ok",new DialogInterface.OnClickListener() {
             public void onClick(DialogInterface dialog,int whichButton) {
                 //Your action here
@@ -48,9 +56,14 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
                 try {
                     l.info("start socket handler");
                     LoggingHandler.startSocketHandler(Main.defaultLogServerHost,LogServer.defaultService);
-                    if(LoggingHandler.socketHandler!=null)
+                    if(LoggingHandler.socketHandler!=null) {
                         LoggingHandler.addSocketHandler(LoggingHandler.socketHandler);
-                    l.info("socket handler: "+LoggingHandler.socketHandler);
+                        l.info("socket handler: "+LoggingHandler.socketHandler);
+                        Logger global=Logger.getLogger(Logger.GLOBAL_LOGGER_NAME);
+                        global.addHandler(LoggingHandler.socketHandler);
+                        global.severe("foo");
+                    } else
+                        l.warning("could start socket handler!");
                 } catch(Exception e) {
                     l.info("caught: "+e);
                 }
@@ -111,13 +124,15 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        Logger global=Logger.getLogger(Logger.GLOBAL_LOGGER_NAME);
+        p("global logger: "+global);
         LoggingHandler.init();
         LoggingHandler.setLevel(Level.WARNING);
         setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
         String ipAddress=getIpAddressFromWifiManager();
         l.info("get ip address from wifi manager says: "+ipAddress);
         if(ipAddress==null) {
-            alert("wifi ip address is null!");
+            alert("wifi ip address is null!",true);
             l.info("sleeping.");
             try {
                 Thread.sleep(10_000);
@@ -128,7 +143,7 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
             l.info("exiting after sleep.");
             System.exit(0);
         } else {
-            alert("wifi ip address is: "+ipAddress);
+            alert("wifi ip address is: "+ipAddress,true);
         }
         if(false)
             new Thread(new Runnable() {
@@ -158,7 +173,7 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
         Set<InetAddress> addresses=myInetAddress(Main.networkPrefix);
         l.info("addresses: "+addresses);
         if(addresses.size()==0)
-            alert("can not get ip address!");
+            alert("can not get ip address!",false);
         startTablet(addresses);
         buttons=new Button[tablet.colors.n];
         RelativeLayout relativeLayout=builGui();
@@ -236,22 +251,52 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
             System.out.println("add menu item: "+menuItem);
             menu.add(Menu.NONE,menuItem.ordinal(),Menu.NONE,menuItem.name());
         }
+        menu.add(Menu.NONE,Tablet.MenuItem.values().length,Menu.NONE,"Restart");
         return true;
     }
+    // http://stackoverflow.com/questions/2470870/force-application-to-restart-on-first-activity
+    /*
+    public static void restart(Context context, int delay) {
+        if (delay == 0) {
+            delay = 1;
+        }
+        Log.e("", "restarting app");
+        Intent restartIntent = context.getPackageManager()
+                .getLaunchIntentForPackage(context.getPackageName() );
+        PendingIntent intent = PendingIntent.getActivity(
+                context, 0,
+                restartIntent, Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        AlarmManager manager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+        manager.set(AlarmManager.RTC, System.currentTimeMillis() + delay, intent);
+        System.exit(2);
+    }
+    */
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         l.info("item: "+item);
         int id=item.getItemId();
         if(Tablet.MenuItem.isItem(id))
             if(Tablet.MenuItem.item(id).equals(Tablet.MenuItem.Quit)) {
-                alert("foo");
+                alert("foo",false);
                 finish();
                 l.severe("after finish! &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&");
+                try {
+                    Thread.sleep(5_000);
+                } catch(InterruptedException e) {
+                    l.info("caught: "+e);
+                }
+                System.exit(0);
             } else {
                 // check here for stuff just for real tablets
                 Tablet.MenuItem.doItem(id,tablet);
                 return true;
-            } else l.severe(item+" is not atablet men item!");
+            }
+        else if(id==Tablet.MenuItem.values().length) {
+            Intent i = getBaseContext().getPackageManager()
+                    .getLaunchIntentForPackage( getBaseContext().getPackageName() );
+            i.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+            startActivity(i);
+        } else l.severe(item+" is not atablet men item!");
         return super.onOptionsItemSelected(item);
     }
     @Override
@@ -284,7 +329,8 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
     void retry() {
         WifiManager wifiMan=(WifiManager)getSystemService(Context.WIFI_SERVICE);
         WifiInfo wifiInf;
-        int ipAddress;List<WifiConfiguration> wifiConfigurations=wifiMan.getConfiguredNetworks();
+        int ipAddress;
+        List<WifiConfiguration> wifiConfigurations=wifiMan.getConfiguredNetworks();
         l.info("wifi configurations (all): "+wifiConfigurations.size());
         for(WifiConfiguration wifiConfiguration : wifiConfigurations) {
             l.info("wifi configuration status is disabled: "+(wifiConfiguration.status==WifiConfiguration.Status.DISABLED));
@@ -326,15 +372,9 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
             ipAddressString=InetAddress.getByAddress(ipByteArray).getHostAddress();
         } catch(UnknownHostException ex) {
             l.warning("Unable to get host address.");
-            if(true) retry();
+            if(true)
+                retry();
         }
         return ipAddressString;
     }
-    GuiAdapterABC guiAdapterABC;
-    Tablet tablet;
-    MediaPlayer mediaPlayer;
-    TextView bottom; // was used for messages, put it back
-    Button[] buttons;
-    final Logger l=Logger.getLogger(getClass().getName());
-    final static Logger staticLogger=Logger.getLogger(MainActivity.class.getName());
 }
