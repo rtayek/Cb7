@@ -3,7 +3,6 @@ import android.app.*;
 import android.content.*;
 import android.content.pm.*;
 import android.media.*;
-import android.net.*;
 import android.net.wifi.*;
 import android.os.*;
 import android.provider.Settings.*;
@@ -25,17 +24,11 @@ import java.math.*;
 import java.net.*;
 import java.nio.*;
 import java.util.*;
+import java.util.concurrent.*;
 import java.util.logging.*;
 //https://plus.google.com/103583939320326217147/posts/BQ5iYJEaaEH driver for usb
 //http://davidrs.com/wp/fix-android-device-not-showing-up-on-windows-8/
 public class MainActivity extends Activity implements Observer, View.OnClickListener {
-    final static Logger staticLogger=Logger.getLogger(MainActivity.class.getName());
-    final Logger l=Logger.getLogger(getClass().getName());
-    GuiAdapterABC guiAdapterABC;
-    Tablet tablet;
-    MediaPlayer mediaPlayer;
-    TextView bottom; // was used for messages, put it back
-    Button[] buttons;
     void alert(String string,boolean cancelable) {
         AlertDialog.Builder alert=new AlertDialog.Builder(this);
         alert.setTitle(string);
@@ -49,6 +42,52 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
         l.info("showing alert.");
         alert.show();
     }
+    public class IpAddress implements Callable<String> {
+        @Override
+        public String call() throws Exception {
+            System.out.println("calling: getIpAddressFromWifiManager()");
+            String ipAddress=getIpAddressFromWifiManager();
+            System.out.println("getIpAddressFromWifiManager() returns: "+ipAddress);
+            return ipAddress;
+        }
+    }
+    public class IpAddressCallable implements Runnable {
+        @Override
+        public void run() {
+            int n=100;
+            for(int i=1;i<=n;i++) {
+                System.out.println("i="+i);
+                Future<String> future=executorService.submit(new IpAddress());
+                while(!future.isDone())
+                    try {
+                        Thread.sleep(1);
+                    } catch(InterruptedException e) {
+                        System.out.println("1 caught: "+e);
+                    }
+                try {
+                    String ipAddress=future.get();
+                    if(ipAddress!=null) {
+                        System.out.println("futire.get() returns: "+ipAddress);
+                        //Toast.makeText(MainActivity.this,"wifi ip address is: "+ipAddress,Toast.LENGTH_LONG).show(); // throws: Can't create handler inside thread that has not called Looper.prepare()
+                        gotWifiUpOrFail=true;
+                        break;
+                    }
+                } catch(InterruptedException e) {
+                    System.out.println("2 caught: "+e);
+                } catch(ExecutionException e) {
+                    System.out.println("3 caught: "+e);
+                }
+                try {
+                    Thread.sleep(100);
+                } catch(InterruptedException e) {
+                    System.out.println("4 caught: "+e);
+                }
+                System.out.println("---------------------------------");
+            }
+            gotWifiUpOrFail=true;
+        }
+    }
+
     void startSockethandler() {
         new Thread(new Runnable() {
             @Override
@@ -61,7 +100,7 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
                         l.info("socket handler: "+LoggingHandler.socketHandler);
                         Logger global=Logger.getLogger(Logger.GLOBAL_LOGGER_NAME);
                         global.addHandler(LoggingHandler.socketHandler);
-                        global.severe("foo");
+                        //global.severe("foo");
                     } else
                         l.warning("could start socket handler!");
                 } catch(Exception e) {
@@ -124,56 +163,35 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
+        new Thread(new IpAddressCallable()).start();
+        int n=100;
+        for(int i=1;i<=n&&!gotWifiUpOrFail;i++)
+            try {
+                Thread.sleep(100);
+            } catch(InterruptedException e) {
+                System.out.println("5 caught: "+e);
+            }
+        initialize();
+    }
+    void initialize() {
         Logger global=Logger.getLogger(Logger.GLOBAL_LOGGER_NAME);
         p("global logger: "+global);
         LoggingHandler.init();
         LoggingHandler.setLevel(Level.WARNING);
         setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
-        String ipAddress=getIpAddressFromWifiManager();
-        l.info("get ip address from wifi manager says: "+ipAddress);
-        if(ipAddress==null) {
-            alert("wifi ip address is null!",true);
-            l.info("sleeping.");
-            try {
-                Thread.sleep(10_000);
-            } catch(InterruptedException e) {
-            }
-            l.info("finish.");
-            finish();
-            l.info("exiting after sleep.");
-            System.exit(0);
-        } else {
-            alert("wifi ip address is: "+ipAddress,true);
-        }
-        if(false)
-            new Thread(new Runnable() {
-                @Override
-                public void run() {
-                    try {
-                        InetAddress localHost=InetAddress.getLocalHost();
-                        l.info("localhost: "+localHost);
-                        String host=localHost.getHostName();
-                        l.info("host: "+host);
-                        InetAddress inetAddress=InetAddress.getByName(host);
-                        l.info("address: "+inetAddress);
-                    } catch(UnknownHostException e) {
-                        l.info("caught: "+e);
-                    }
-                }
-            }).start();
         if(true) // need to run this on a thread
             startSockethandler();
-        setContentView(R.layout.activity_main);
         l.info("android id: "+Secure.getString(getContentResolver(),Secure.ANDROID_ID));
         setupAudioPlayer();
         setupToast();
         l.info("playing sound.");
-        Audio.audio.play(Audio.Sound.electronic_chime_kevangc_495939803);
+        Audio.audio.play(Sound.electronic_chime_kevangc_495939803);
         InetAddress inetAddress=null;
         Set<InetAddress> addresses=myInetAddress(Main.networkPrefix);
         l.info("addresses: "+addresses);
         if(addresses.size()==0)
-            alert("can not get ip address!",false);
+            Toast.makeText(this,"can not get ip address!",Toast.LENGTH_LONG).show();
         startTablet(addresses);
         buttons=new Button[tablet.colors.n];
         RelativeLayout relativeLayout=builGui();
@@ -292,11 +310,11 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
                 return true;
             }
         else if(id==Tablet.MenuItem.values().length) {
-            Intent i = getBaseContext().getPackageManager()
-                    .getLaunchIntentForPackage( getBaseContext().getPackageName() );
+            Intent i=getBaseContext().getPackageManager().getLaunchIntentForPackage(getBaseContext().getPackageName());
             i.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
             startActivity(i);
-        } else l.severe(item+" is not atablet men item!");
+        } else
+            l.severe(item+" is not atablet men item!");
         return super.onOptionsItemSelected(item);
     }
     @Override
@@ -304,7 +322,7 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
         //Main.stop();
         // what should we stop here?
         if(tablet!=null)
-            tablet.stopListening(tablet);
+            tablet.stopListening();
         else
             System.out.println("tablet is null in on destroy!");
         super.onDestroy();
@@ -377,4 +395,13 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
         }
         return ipAddressString;
     }
+    ExecutorService executorService=Executors.newFixedThreadPool(3);
+    boolean gotWifiUpOrFail=false;
+    GuiAdapterABC guiAdapterABC;
+    Tablet tablet;
+    MediaPlayer mediaPlayer;
+    TextView bottom; // was used for messages, put it back
+    Button[] buttons;
+    final Logger l=Logger.getLogger(getClass().getName());
+    final static Logger staticLogger=Logger.getLogger(MainActivity.class.getName());
 }
