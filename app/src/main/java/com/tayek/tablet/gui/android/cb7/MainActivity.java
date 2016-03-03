@@ -148,14 +148,13 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
                         }
                     });
                 else
-                    l.info("toast was: "+string);
+                   ; //p("toast was: "+string);
             }
         });
     }
     void startTablet(Set<InetAddress> addresses) {
-        Group group=new Group(1,new Group.Groups().groups.get("g0"),Model.mark1,Group.defaultOptions);
+        Group group=new Group(1,new Group.Groups().groups.get("g0"),Model.mark1,false);
         tablet=group.getTablet(addresses.iterator().next(),null);
-        l.info("options: "+tablet.group.options);
         tablet.model.addObserver(this);
         tablet.model.addObserver(new AudioObserver(tablet.model));
         tablet.startListening();
@@ -270,6 +269,20 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
             menu.add(Menu.NONE,menuItem.ordinal(),Menu.NONE,menuItem.name());
         }
         menu.add(Menu.NONE,Tablet.MenuItem.values().length,Menu.NONE,"Restart");
+        SubMenu subMenu =menu.addSubMenu(Menu.NONE,99,Menu.NONE,"Level");
+        for(Tablet.LevelSubMenuItem levelSubMenuItem : Tablet.LevelSubMenuItem.values()) {
+            System.out.println("add menu item: "+levelSubMenuItem);
+            subMenu.add(Menu.NONE,Tablet.MenuItem.values().length+levelSubMenuItem.ordinal()/*hack!*/,Menu.NONE,levelSubMenuItem.name());
+        }
+        //addSubMenu(int groupId, int itemId, int order, CharSequence title)
+        /*
+        SubMenu fileMenu = menu.addSubMenu("File");
+        SubMenu editMenu = menu.addSubMenu("Edit");
+        fileMenu.add(FILE, NEW_MENU_ITEM, 0, "new");
+        fileMenu.add(FILE, SAVE_MENU_ITEM, 1, "save");
+        editMenu.add(EDIT, UNDO_MENU_ITEM, 0, "undo");
+        editMenu.add(EDIT, REDO_MENU_ITEM, 1, "redo");
+        */
         return true;
     }
     // http://stackoverflow.com/questions/2470870/force-application-to-restart-on-first-activity
@@ -309,12 +322,17 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
                 Tablet.MenuItem.doItem(id,tablet);
                 return true;
             }
-        else if(id==Tablet.MenuItem.values().length) {
+        else if(id==Tablet.MenuItem.values().length) { // some hack for restarting tablet?
             Intent i=getBaseContext().getPackageManager().getLaunchIntentForPackage(getBaseContext().getPackageName());
             i.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
             startActivity(i);
         } else
-            l.severe(item+" is not atablet men item!");
+        if(Tablet.LevelSubMenuItem.isItem(id-Tablet.MenuItem.values().length)) {
+                Tablet.LevelSubMenuItem.doItem(id-Tablet.MenuItem.values().length,tablet);
+                return true;
+            }
+
+       else  l.severe(item+" is not atablet men item!");
         return super.onOptionsItemSelected(item);
     }
     @Override
