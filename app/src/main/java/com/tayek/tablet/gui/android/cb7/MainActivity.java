@@ -94,13 +94,13 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
             public void run() {
                 try {
                     l.info("start socket handler");
-                    LoggingHandler.startSocketHandler(Main.defaultLogServerHost,LogServer.defaultService);
+                    LoggingHandler.startSocketHandler(Main.logServerHost,LogServer.defaultService);
                     if(LoggingHandler.socketHandler!=null) {
                         LoggingHandler.addSocketHandler(LoggingHandler.socketHandler);
                         l.info("socket handler: "+LoggingHandler.socketHandler);
                         Logger global=Logger.getLogger(Logger.GLOBAL_LOGGER_NAME);
                         global.addHandler(LoggingHandler.socketHandler);
-                        //global.severe("foo");
+                        global.severe("global with socket handler.");
                     } else
                         l.warning("could start socket handler!");
                 } catch(Exception e) {
@@ -187,7 +187,7 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
         l.info("playing sound.");
         Audio.audio.play(Sound.electronic_chime_kevangc_495939803);
         InetAddress inetAddress=null;
-        Set<InetAddress> addresses=myInetAddress(Main.networkPrefix);
+        Set<InetAddress> addresses=myInetAddresses(Main.networkPrefix);
         l.info("addresses: "+addresses);
         if(addresses.size()==0)
             Toast.makeText(this,"can not get ip address!",Toast.LENGTH_LONG).show();
