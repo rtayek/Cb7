@@ -14,6 +14,7 @@ import android.widget.*;
 import com.tayek.tablet.io.Audio.*;
 import com.tayek.tablet.*;
 import com.tayek.tablet.io.*;
+import com.tayek.utilities.*;
 
 import static com.tayek.tablet.io.IO.*;
 import static java.lang.Math.round;
@@ -87,28 +88,6 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
             gotWifiUpOrFail=true;
         }
     }
-
-    void startSockethandler() {
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    l.info("start socket handler");
-                    LoggingHandler.startSocketHandler(Main.logServerHost,LogServer.defaultService);
-                    if(LoggingHandler.socketHandler!=null) {
-                        LoggingHandler.addSocketHandler(LoggingHandler.socketHandler);
-                        l.info("socket handler: "+LoggingHandler.socketHandler);
-                        Logger global=Logger.getLogger(Logger.GLOBAL_LOGGER_NAME);
-                        global.addHandler(LoggingHandler.socketHandler);
-                        global.severe("global with socket handler.");
-                    } else
-                        l.warning("could start socket handler!");
-                } catch(Exception e) {
-                    l.info("caught: "+e);
-                }
-            }
-        }).start();
-    }
     void setupAudioPlayer() {
         ((Audio.Bndroid)Audio.audio).setCallback(new IO.Callback<Audio.Sound>() {
             @Override
@@ -148,39 +127,35 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
                         }
                     });
                 else
-                   ; //p("toast was: "+string);
+                    ; //p("toast was: "+string);
             }
         });
     }
     void startTablet(Set<InetAddress> addresses) {
-        Group group=new Group(1,new Group.Groups().groups.get("g0"),Model.mark1,false);
+        Group group=new Group(1,new Group.Groups().groups.get("g0"),Receiver.Model.mark1,false);
         tablet=group.getTablet(addresses.iterator().next(),null);
         tablet.model.addObserver(this);
         tablet.model.addObserver(new AudioObserver(tablet.model));
         tablet.startListening();
     }
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
+    void waitForWifi() {
         new Thread(new IpAddressCallable()).start();
-        int n=100;
+        int n=20;
         for(int i=1;i<=n&&!gotWifiUpOrFail;i++)
             try {
-                Thread.sleep(100);
+                Thread.sleep(10);
             } catch(InterruptedException e) {
                 System.out.println("5 caught: "+e);
             }
-        initialize();
     }
     void initialize() {
+        p("enter initialize at: "+et);
         Logger global=Logger.getLogger(Logger.GLOBAL_LOGGER_NAME);
         p("global logger: "+global);
         LoggingHandler.init();
         LoggingHandler.setLevel(Level.WARNING);
+        LoggingHandler.toggleSockethandlers();
         setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
-        if(true) // need to run this on a thread
-            startSockethandler();
         l.info("android id: "+Secure.getString(getContentResolver(),Secure.ANDROID_ID));
         setupAudioPlayer();
         setupToast();
@@ -261,18 +236,30 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
         return relativeLayout;
     }
     @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        p("onCreate at: "+et);
+        super.onCreate(savedInstanceState);
+        p("after super.onCreate at: "+et);
+        setContentView(R.layout.activity_main);
+        p("start wait for wifi at: "+et);
+        waitForWifi();
+        p("end wait for wifi at: "+et);
+        initialize();
+        p("exit onCreate at: "+et+" &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&");
+    }
+    @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         l.info("on create options menu");
         super.onCreateOptionsMenu(menu);
-        for(Tablet.MenuItem menuItem : Tablet.MenuItem.values()) {
+        for(Enums.MenuItem menuItem : Enums.MenuItem.values()) {
             System.out.println("add menu item: "+menuItem);
             menu.add(Menu.NONE,menuItem.ordinal(),Menu.NONE,menuItem.name());
         }
-        menu.add(Menu.NONE,Tablet.MenuItem.values().length,Menu.NONE,"Restart");
-        SubMenu subMenu =menu.addSubMenu(Menu.NONE,99,Menu.NONE,"Level");
-        for(Tablet.LevelSubMenuItem levelSubMenuItem : Tablet.LevelSubMenuItem.values()) {
+        menu.add(Menu.NONE,Enums.MenuItem.values().length,Menu.NONE,"Restart");
+        SubMenu subMenu=menu.addSubMenu(Menu.NONE,99,Menu.NONE,"Level");
+        for(Enums.LevelSubMenuItem levelSubMenuItem : Enums.LevelSubMenuItem.values()) {
             System.out.println("add menu item: "+levelSubMenuItem);
-            subMenu.add(Menu.NONE,Tablet.MenuItem.values().length+levelSubMenuItem.ordinal()/*hack!*/,Menu.NONE,levelSubMenuItem.name());
+            subMenu.add(Menu.NONE,Enums.MenuItem.values().length+levelSubMenuItem.ordinal()/*hack!*/,Menu.NONE,levelSubMenuItem.name());
         }
         //addSubMenu(int groupId, int itemId, int order, CharSequence title)
         /*
@@ -306,8 +293,8 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
     public boolean onOptionsItemSelected(MenuItem item) {
         l.info("item: "+item);
         int id=item.getItemId();
-        if(Tablet.MenuItem.isItem(id))
-            if(Tablet.MenuItem.item(id).equals(Tablet.MenuItem.Quit)) {
+        if(Enums.MenuItem.isItem(id))
+            if(Enums.MenuItem.item(id).equals(Enums.MenuItem.Quit)) {
                 alert("foo",false);
                 finish();
                 l.severe("after finish! &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&");
@@ -319,20 +306,18 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
                 System.exit(0);
             } else {
                 // check here for stuff just for real tablets
-                Tablet.MenuItem.doItem(id,tablet);
+                Enums.MenuItem.doItem(id,tablet);
                 return true;
             }
-        else if(id==Tablet.MenuItem.values().length) { // some hack for restarting tablet?
+        else if(id==Enums.MenuItem.values().length) { // some hack for restarting tablet?
             Intent i=getBaseContext().getPackageManager().getLaunchIntentForPackage(getBaseContext().getPackageName());
             i.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
             startActivity(i);
+        } else if(Enums.LevelSubMenuItem.isItem(id-Enums.MenuItem.values().length)) {
+            Enums.LevelSubMenuItem.doItem(id-Enums.MenuItem.values().length,tablet); // hack!
+            return true;
         } else
-        if(Tablet.LevelSubMenuItem.isItem(id-Tablet.MenuItem.values().length)) {
-                Tablet.LevelSubMenuItem.doItem(id-Tablet.MenuItem.values().length,tablet);
-                return true;
-            }
-
-       else  l.severe(item+" is not atablet men item!");
+            l.severe(item+" is not atablet men item!");
         return super.onOptionsItemSelected(item);
     }
     @Override
@@ -354,6 +339,9 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
             guiAdapterABC.processClick(index);
         } else
             l.severe("not a button!");
+        if(lastClick!=Double.NaN)
+            p((et.etms()-lastClick)+" between clicks.");
+        lastClick=et.etms();
     }
     @Override
     public void update(Observable o,Object hint) {
@@ -413,13 +401,23 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
         }
         return ipAddressString;
     }
-    ExecutorService executorService=Executors.newFixedThreadPool(3);
+    static final Et et=new Et();
+    static {
+        p("<static init> "+et+" &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&");
+    }
+    {
+        p("<init> "+et);
+        new Thread(new IpAddressCallable()).start();
+    }
+    Double lastClick=Double.NaN;
+    ExecutorService executorService=Executors.newFixedThreadPool(10);
     boolean gotWifiUpOrFail=false;
     GuiAdapterABC guiAdapterABC;
     Tablet tablet;
     MediaPlayer mediaPlayer;
     TextView bottom; // was used for messages, put it back
     Button[] buttons;
+    SocketHandler socketHandler;
     final Logger l=Logger.getLogger(getClass().getName());
     final static Logger staticLogger=Logger.getLogger(MainActivity.class.getName());
 }

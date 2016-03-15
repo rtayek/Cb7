@@ -24,6 +24,9 @@ android {
         }
     }
 }
+afterEvaluate {
+    installDebug.dependsOn(uninstallDebug)
+}
 def jdkHome = System.getenv("JAVA_HOME")
 dependencies {
     //compile files("${jdkHome}/lib/tools.jar") // who needs this?
