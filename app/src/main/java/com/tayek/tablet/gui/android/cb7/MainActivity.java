@@ -132,7 +132,7 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
         });
     }
     void startTablet(Set<InetAddress> addresses) {
-        Group group=new Group(1,new Group.Groups().groups.get("g0"),Receiver.Model.mark1,false);
+        Group group=new Group(1,new Group.Groups().groups.get("g0"),MessageReceiver.Model.mark1,false);
         tablet=group.getTablet(addresses.iterator().next(),null);
         tablet.model.addObserver(this);
         tablet.model.addObserver(new AudioObserver(tablet.model));
