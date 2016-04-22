@@ -59,13 +59,13 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
     public class IpAddressCallable implements Runnable {
         @Override
         public void run() {
-            int n=100;
+            int n=20;
             for(int i=1;i<=n;i++) {
                 System.out.println("i="+i);
                 Future<String> future=executorService.submit(new IpAddress());
                 while(!future.isDone())
                     try {
-                        Thread.sleep(1);
+                        Thread.sleep(200);
                     } catch(InterruptedException e) {
                         System.out.println("1 caught: "+e);
                     }
@@ -138,13 +138,15 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
     void startTablet(Set<InetAddress> addresses) {
         p("g0: "+new Group.Groups().groups.get("g0"));
         Map<String,Required> requireds=new TreeMap<>(new Group.Groups().groups.get("g0"));
-        Group group=new Group("1",requireds,MessageReceiver.Model.mark1);
-        p("stuff: "+group);
+        group=new Group("1",requireds,MessageReceiver.Model.mark1);
+        p("group: "+group);
         String tabletId=group.getTabletIdFromInetAddress(addresses.iterator().next(),null);
         p("tablet id: "+tabletId);
         tablet=Tablet.factory.create2(tabletId,group);
-        group=((Group.TabletImpl2)tablet).group();
         p("tablet: "+tablet);
+        p("before: group: "+group);
+        group=((Group.TabletImpl2)tablet).group();
+        p("after: group: "+group);
         p(" period: "+tablet.histories().reportPeriod);
         tablet.model().addObserver(this);
         tablet.model().addObserver(new AudioObserver(tablet.model()));
@@ -291,6 +293,7 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
         buttons[rows*columns]=button;
         relativeLayout.addView(button);
         // add stuff
+        p("group: "+group);
         status=new Button[group.keys().size()];
         for(int i=0;i<group.keys().size();i++) {
             double x=x0+i*1.2*size/3;
@@ -458,10 +461,12 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
         l.info("wifi configurations (all): "+wifiConfigurations.size());
         for(WifiConfiguration wifiConfiguration : wifiConfigurations) {
             l.info("wifi configuration status is disabled: "+(wifiConfiguration.status==WifiConfiguration.Status.DISABLED));
-            l.info("wifi configuration toString(): "+wifiConfiguration.toString());
+            //l.info("wifi configuration toString(): "+wifiConfiguration.toString());
             if(wifiConfiguration.toString().contains(tabletNetworkPrefix)) {
-                l.info("found our network: "+wifiConfiguration.toString());
+                //p("IP config: "+wifiConfiguration.getIpConfiguration());
+                //l.info("found our network: "+wifiConfiguration.toString());
                 int networkId=wifiConfiguration.networkId;
+                l.info("found our network id: "+networkId);
                 boolean ok=wifiMan.disconnect();
                 l.info("disconnect() returns: "+ok);
                 l.info("enabling our network: "+networkId);
@@ -474,6 +479,7 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
                 if(ok) {
                     wifiMan=(WifiManager)getSystemService(Context.WIFI_SERVICE);
                     wifiInf=wifiMan.getConnectionInfo();
+                    p("wifi inf: "+wifiInf);
                     ipAddress=wifiInf.getIpAddress();
                     l.info("wifi ip adress: "+ipAddress);
                 }
@@ -490,12 +496,13 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
         p("wifi ip adress: "+ipAddress);
         if(ByteOrder.nativeOrder().equals(ByteOrder.LITTLE_ENDIAN))
             ipAddress=Integer.reverseBytes(ipAddress);
+        p("ipAddress: "+Integer.toHexString(ipAddress));
         byte[] ipByteArray=BigInteger.valueOf(ipAddress).toByteArray();
         String ipAddressString=null;
         try {
             ipAddressString=InetAddress.getByAddress(ipByteArray).getHostAddress();
         } catch(UnknownHostException ex) {
-            l.warning("Unable to get host address.");
+            l.warning("Unable to get host address for: "+Integer.toHexString(ipAddress));
             if(true)
                 retry();
         }
