@@ -136,19 +136,19 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
         });
     }
     void startTablet(Set<InetAddress> addresses) {
-        p("g0: "+new Main.Stuff.Groups().groups.get("g0"));
-        Main.Stuff stuff=new Main.Stuff(1,new Main.Stuff.Groups().groups.get("g0"),MessageReceiver.Model.mark1);
-        p("stuff: "+stuff);
-        String tabletId=stuff.getTabletIdFromInetAddress(addresses.iterator().next(),null);
+        p("g0: "+new Group.Groups().groups.get("g0"));
+        Map<String,Required> requireds=new TreeMap<>(new Group.Groups().groups.get("g0"));
+        Group group=new Group("1",requireds,MessageReceiver.Model.mark1);
+        p("stuff: "+group);
+        String tabletId=group.getTabletIdFromInetAddress(addresses.iterator().next(),null);
         p("tablet id: "+tabletId);
-        tablet=new Tablet(stuff,tabletId);
+        tablet=Tablet.factory.create2(tabletId,group);
+        group=((Group.TabletImpl2)tablet).group();
         p("tablet: "+tablet);
         p(" period: "+tablet.histories().reportPeriod);
-        tablet.model.addObserver(this);
-        tablet.model.addObserver(new AudioObserver(tablet.model));
-        SocketAddress socketAddress=tablet.stuff.socketAddress(tablet.tabletId());
-        p("start listening on: "+socketAddress);
-        tablet.startListening(socketAddress);
+        tablet.model().addObserver(this);
+        tablet.model().addObserver(new AudioObserver(tablet.model()));
+        ((Group.TabletImpl2)tablet).startListening();
     }
     void waitForWifi() {
         new Thread(new IpAddressCallable()).start();
@@ -161,10 +161,10 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
             }
     }
     Histories histories(int index) {
-        int tabletIndex=index-tablet.colors.rows*tablet.colors.columns;
-        if(0<=tabletIndex&&tabletIndex<tablet.stuff.keys().size()) {
-            String tabletId=Main.Stuff.aTabletId(tabletIndex+1);
-            return tabletId!=null?tablet.stuff.required(tabletId).histories():null;
+        int tabletIndex=index-tablet.model().colors.rows*tablet.model().colors.columns;
+        if(0<=tabletIndex&&tabletIndex<group.keys().size()) {
+            String tabletId=IO.aTabletId(tabletIndex+1);
+            return tabletId!=null?group.required(tabletId).histories():null;
         } else {
             l.severe(index+" is bad index!");
             return null;
@@ -189,19 +189,19 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
         if(addresses.size()==0)
             Toast.makeText(this,"can not get ip address!",Toast.LENGTH_LONG).show();
         startTablet(addresses);
-        p("colors: "+tablet.colors);
+        p("colors: "+tablet.model().colors);
         try {
             Thread.sleep(100);
         } catch(Exception e) {
         }
-        buttons=new Button[tablet.colors.n];
+        buttons=new Button[tablet.model().colors.n];
         RelativeLayout relativeLayout=builGui();
-        relativeLayout.setBackgroundColor(tablet.colors.background|0xff000000);
+        relativeLayout.setBackgroundColor(tablet.model().colors.background|0xff000000);
         guiAdapterABC=new GuiAdapterABC(tablet) {
             @Override
             public void processClick(int index) {
                 int id=index+1;
-                if(1<=id&&id<=tablet.model.buttons)
+                if(1<=id&&id<=tablet.model().buttons)
                     tablet.click(index+1);
                 else {
                     Histories histories=histories(index);
@@ -222,7 +222,7 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
-                        buttons[id-1].setBackgroundColor(tablet.colors.aColor(id-1,state));
+                        buttons[id-1].setBackgroundColor(tablet.model().colors.aColor(id-1,state));
                     }
                 });
             }
@@ -242,7 +242,7 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
         p("other: "+i+", left margin="+params.leftMargin+", top margin="+params.topMargin);
         button.setLayoutParams(params);
         button.setText(string);
-        button.setBackgroundColor(tablet.colors.aColor(tablet.colors.whiteOn));
+        button.setBackgroundColor(tablet.model().colors.aColor(tablet.model().colors.whiteOn));
         button.setOnClickListener(this);
         return button;
     }
@@ -257,8 +257,8 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
         p("x0="+x0+", y0="+y0);
         RelativeLayout relativeLayout=new RelativeLayout(this);
         RelativeLayout.LayoutParams params=null;
-        final int rows=tablet.colors.rows;
-        final int columns=tablet.colors.columns;
+        final int rows=tablet.model().colors.rows;
+        final int columns=tablet.model().colors.columns;
         for(int i=0;i<rows*columns;i++) {
             Button button=new Button(this);
             button.setId(i); // id is index!
@@ -270,8 +270,8 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
             p("button: "+i+", left margin="+params.leftMargin+", top margin="+params.topMargin);
             button.setLayoutParams(params);
             if(i/columns%2==0)
-                button.setText(tablet.getButtonText(Integer.valueOf(i+1)));
-            button.setBackgroundColor(tablet.colors.aColor(i,false));
+                button.setText(tablet.model().getButtonText(Integer.valueOf(i+1),tablet.tabletId()));
+            button.setBackgroundColor(tablet.model().colors.aColor(i,false));
             button.setOnClickListener(this);
             buttons[i]=button;
             relativeLayout.addView(button);
@@ -285,14 +285,14 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
         params.topMargin=y0;
         p("reset: left margin="+params.leftMargin+", top margin="+params.topMargin);
         button.setLayoutParams(params);
-        button.setText(tablet.getButtonText(tablet.model.resetButtonId));
-        button.setBackgroundColor(tablet.colors.aColor(rows*columns,false));
+        button.setText(tablet.model().getButtonText(tablet.model().resetButtonId,tablet.tabletId()));
+        button.setBackgroundColor(tablet.model().colors.aColor(rows*columns,false));
         button.setOnClickListener(this);
         buttons[rows*columns]=button;
         relativeLayout.addView(button);
         // add stuff
-        status=new Button[tablet.stuff.keys().size()];
-        for(int i=0;i<tablet.stuff.keys().size();i++) {
+        status=new Button[group.keys().size()];
+        for(int i=0;i<group.keys().size();i++) {
             double x=x0+i*1.2*size/3;
             double y=y0+(3-.5)*size*1.2;
             button=getButton(size,""+Integer.valueOf(i+1),fontsize,rows,columns,i,(int)x,(int)y);
@@ -333,6 +333,7 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
         waitForWifi();
         p("end wait for wifi at: "+et);
         initialize();
+        setTitle(tablet.tabletId());
         p("exit onCreate at: "+et+" &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&");
     }
     @Override
@@ -414,7 +415,7 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
         //Main.stop();
         // what should we stop here?
         if(tablet!=null)
-            tablet.stopListening();
+            ((Group.TabletImpl2)tablet).stopListening();
         else
             System.out.println("tablet is null in on destroy!");
         super.onDestroy();
@@ -431,20 +432,20 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
         if(lastClick!=Double.NaN)
             p((et.etms()-lastClick)+" between clicks.");
         lastClick=et.etms();
-        Iterator<String> s=tablet.stuff.keys().iterator();
-        p("tablets: "+tablet.stuff.keys());
-        for(int i=0;i<tablet.stuff.keys().size();i++) {
-            Histories histories=tablet.stuff.required(s.next()).histories();
+        Iterator<String> s=group.keys().iterator();
+        p("tablets: "+group.keys());
+        for(int i=0;i<group.keys().size();i++) {
+            Histories histories=group.required(s.next()).histories();
             p("histories: "+histories);
             double recentFaulureRate=histories.senderHistory.history.recentFailureRate();
-            int color=histories.senderHistory.history.attempts()==0?tablet.colors.aColor(Colors.yellow):tablet.colors.aColor(tablet.colors.smooth(recentFaulureRate));
+            int color=histories.senderHistory.history.attempts()==0?tablet.model().colors.aColor(Colors.yellow):tablet.model().colors.aColor(tablet.model().colors.smooth(recentFaulureRate));
             p("recent failure rate: "+recentFaulureRate+", color: "+Colors.toString(color));
             status[i].setBackgroundColor(color);
         }
     }
     @Override
     public void update(Observable o,Object hint) {
-        if(o==tablet.model)
+        if(o==tablet.model())
             guiAdapterABC.update(o,hint);
         else
             System.out.println("no gui for model: "+o);
@@ -513,6 +514,7 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
     boolean gotWifiUpOrFail=false;
     GuiAdapterABC guiAdapterABC;
     Tablet tablet;
+    Group group;
     MediaPlayer mediaPlayer;
     TextView bottom; // was used for messages, put it back
     Button[] buttons;
