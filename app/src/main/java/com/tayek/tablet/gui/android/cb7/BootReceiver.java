@@ -9,5 +9,5 @@ public class BootReceiver extends BroadcastReceiver {
             context.startActivity(activityIntent);
         }
     }
-    boolean startActivity=true; // for now
+    boolean startActivity=false; // turn on when done with testing!
 }

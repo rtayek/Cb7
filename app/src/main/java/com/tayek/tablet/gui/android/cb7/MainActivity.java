@@ -5,6 +5,7 @@ import android.content.pm.*;
 import android.media.*;
 import android.net.wifi.*;
 import android.os.*;
+import android.provider.*;
 import android.provider.Settings.*;
 import android.util.*;
 import android.view.*;
@@ -17,12 +18,14 @@ import com.tayek.io.*;
 import static com.tayek.io.IO.*;
 
 import com.tayek.io.Audio.*;
+import com.tayek.io.Audio.Factory.FactoryImpl.AndroidAudio;
 import com.tayek.tablet.*;
 import com.tayek.tablet.io.*;
 import com.tayek.utilities.*;
 
 import static java.lang.Math.round;
 
+import java.io.*;
 import java.lang.*;
 import java.lang.System;
 import java.math.*;
@@ -33,7 +36,15 @@ import java.util.concurrent.*;
 import java.util.logging.*;
 //https://plus.google.com/103583939320326217147/posts/BQ5iYJEaaEH driver for usb
 //http://davidrs.com/wp/fix-android-device-not-showing-up-on-windows-8/
-public class MainActivity extends Activity implements Observer, View.OnClickListener {
+public class MainActivity extends Activity implements Observer, View.OnClickListener, Tablet.HasATablet {
+    @Override
+    public Tablet tablet() {
+        return tablet;
+    }
+    @Override
+    public void setTablet(Tablet tablet) {
+        this.tablet=tablet;
+    }
     void alert(String string,boolean cancelable) {
         AlertDialog.Builder alert=new AlertDialog.Builder(this);
         alert.setTitle(string);
@@ -47,13 +58,165 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
         l.info("showing alert.");
         alert.show();
     }
-    public class IpAddress implements Callable<String> {
+    RelativeLayout builGui() {
+        DisplayMetrics metrics=new DisplayMetrics();
+        getWindowManager().getDefaultDisplay().getMetrics(metrics);
+        System.out.println(metrics);
+        final int size=225;
+        final float fontsize=size*.30f;
+        System.out.println(size+" "+(metrics.widthPixels*1./7));
+        final int x0=size/4, y0=75;
+        p("x0="+x0+", y0="+y0);
+        RelativeLayout relativeLayout=new RelativeLayout(this);
+        RelativeLayout.LayoutParams params=null;
+        final int rows=colors.rows;
+        final int columns=colors.columns;
+        buttons=new Button[colors.n]; // colors is intimatley tied to the mark 1 model!
+        for(int i=0;i<rows*columns;i++) {
+            Button button=new Button(this);
+            button.setId(i); // id is index!
+            button.setTextSize(fontsize);
+            button.setGravity(Gravity.CENTER);
+            params=new RelativeLayout.LayoutParams(size,size);
+            params.leftMargin=(int)(x0+i%columns*1.2*size);
+            params.topMargin=(int)(y0+i/columns*size*1.2);
+            //p("button: "+i+", left margin="+params.leftMargin+", top margin="+params.topMargin);
+            button.setLayoutParams(params);
+            if(i/columns%2==0)
+                button.setText(""+(char)('0'+(i+1)));
+            button.setBackgroundColor(colors.aColor(i,false));
+            button.setOnClickListener(this);
+            buttons[i]=button;
+            relativeLayout.addView(button);
+        }
+        Button button=new Button(this);
+        button.setId(rows*columns); // id is index!
+        button.setTextSize(fontsize);
+        button.setGravity(Gravity.CENTER);
+        params=new RelativeLayout.LayoutParams(size,size);
+        params.leftMargin=(int)(x0+(columns+1.2)*size);
+        params.topMargin=y0;
+        p("reset: left margin="+params.leftMargin+", top margin="+params.topMargin);
+        button.setLayoutParams(params);
+        button.setText("R");
+        button.setBackgroundColor(colors.aColor(rows*columns,false));
+        button.setOnClickListener(this);
+        buttons[rows*columns]=button;
+        relativeLayout.addView(button);
+        status=new Button[group.keys().size()];
+        for(int i=0;i<group.keys().size();i++) {
+            double x=x0+i*1.2*size/3;
+            double y=y0+(3-.5)*size*1.2;
+            button=getButton(size,""+Integer.valueOf(i+1),fontsize,rows,columns,i,(int)x,(int)y);
+            status[i]=button;
+            relativeLayout.addView(button);
+        }
+        int i=group.keys().size()+3;
+        double xr=x0+i*1.2*size/3;
+        double yr=y0+(3-.5)*size*1.2;
+        //set layout params?
+        wifiStatus=getButton(size,"w",fontsize,rows,columns,i,(int)xr,(int)yr);
+        relativeLayout.addView(wifiStatus);
+        xr+=1.2*size/3;
+        routerStatus=getButton(size,"r",fontsize,rows,columns,i,(int)xr,(int)yr);
+        relativeLayout.addView(routerStatus);
+        if(false) {
+            int testButtons=11;
+            test=new Button[testButtons];
+            for(i=0;i<testButtons;i++) {
+                double x=x0+i*1.2*size/3;
+                double y=y0+(3-.5)*size*1.2;
+                y-=size*1.2/3;
+                int r=(int)(i*.1*100);
+                if(r>=100)
+                    r=99;
+                else if(r<0)
+                    r=0;
+                String text=""+r;
+                while(text.length()<2)
+                    text+='0';
+                button=getButton((int)(size*1.),text,(float)(fontsize*.6),rows,columns,i,(int)x,(int)y);
+                p("setting backgroud to: "+Colors.toString(Colors.smooth(i*.1)));
+                button.setBackgroundColor(Colors.aColor(Colors.smooth(i*.1)));
+                test[i]=button;
+                relativeLayout.addView(button);
+            }
+        }
+        relativeLayout.setBackgroundColor(colors.background|0xff000000);
+        return relativeLayout;
+    }
+    void retry() {
+        WifiManager wifiMan=(WifiManager)getSystemService(Context.WIFI_SERVICE);
+        WifiInfo wifiInf;
+        int ipAddress;
+        List<WifiConfiguration> wifiConfigurations=wifiMan.getConfiguredNetworks();
+        if(wifiConfigurations==null) {
+            return;
+        }
+        l.info("wifi configurations (all): "+wifiConfigurations.size());
+        for(WifiConfiguration wifiConfiguration : wifiConfigurations) {
+            l.info("wifi configuration status is disabled: "+(wifiConfiguration.status==WifiConfiguration.Status.DISABLED));
+            //l.info("wifi configuration toString(): "+wifiConfiguration.toString());
+            if(wifiConfiguration.toString().contains(tabletNetworkPrefix)) {
+                //p("IP config: "+wifiConfiguration.getIpConfiguration());
+                //l.info("found our network: "+wifiConfiguration.toString());
+                int networkId=wifiConfiguration.networkId;
+                l.info("found our network id: "+networkId);
+                boolean ok=wifiMan.disconnect();
+                l.info("enabling our network: "+networkId);
+                // https://code.google.com/p/android-developer-preview/issues/detail?id=2218
+                ok=wifiMan.enableNetwork(networkId,true);
+                ok=wifiMan.reconnect();
+                l.info("reconnect returns: "+ok);
+                if(ok) {
+                    wifiMan=(WifiManager)getSystemService(Context.WIFI_SERVICE);
+                    wifiInf=wifiMan.getConnectionInfo();
+                    p("wifi inf: "+wifiInf);
+                    ipAddress=wifiInf.getIpAddress();
+                    l.info("wifi ip adress: "+ipAddress);
+                }
+                break;
+            }
+        }
+    }
+    InetAddress getIpAddressFromWifiManager() {
+        WifiManager wifiMan=(WifiManager)getSystemService(Context.WIFI_SERVICE);
+        p("isWifiEnabled() returns: "+wifiMan.isWifiEnabled());
+        WifiInfo wifiInf=wifiMan.getConnectionInfo();
+        p("wifi info: "+wifiInf);
+        int ipAddress=wifiInf.getIpAddress();
+        String ipAddressString=null;
+        if(ipAddress!=0) {
+           // if(ipAddress.isL)
+            p("wifi ip address string: "+ipAddress);
+            if(ByteOrder.nativeOrder().equals(ByteOrder.LITTLE_ENDIAN))
+                ipAddress=Integer.reverseBytes(ipAddress);
+            p("ipAddress string: "+Integer.toHexString(ipAddress));
+            byte[] ipByteArray=BigInteger.valueOf(ipAddress).toByteArray();
+            try {
+                ipAddressString=InetAddress.getByAddress(ipByteArray).getHostAddress();
+            } catch(UnknownHostException ex) {
+                l.warning("Unable to get host address for: "+Integer.toHexString(ipAddress));
+                if(true)
+                    retry();
+            }
+        } else
+            retry();
+        InetAddress inetAddress=null;
+        try {
+            inetAddress=InetAddress.getByName(ipAddressString);
+        } catch(UnknownHostException e) {
+
+        }
+        return inetAddress;
+    }
+    public class IpAddress implements Callable<InetAddress> {
         @Override
-        public String call() throws Exception {
+        public InetAddress call() throws Exception {
             System.out.println("calling: getIpAddressFromWifiManager()");
-            String ipAddress=getIpAddressFromWifiManager();
-            System.out.println("getIpAddressFromWifiManager() returns: "+ipAddress);
-            return ipAddress;
+            InetAddress inetAddress=getIpAddressFromWifiManager();
+            System.out.println("getIpAddressFromWifiManager() returns: "+inetAddress);
+            return inetAddress;
         }
     }
     public class IpAddressCallable implements Runnable {
@@ -61,8 +224,8 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
         public void run() {
             int n=20;
             for(int i=1;i<=n;i++) {
-                System.out.println("i="+i);
-                Future<String> future=executorService.submit(new IpAddress());
+                System.out.println("ipAddressCallable: i="+i);
+                Future<InetAddress> future=executorService.submit(new IpAddress());
                 while(!future.isDone())
                     try {
                         Thread.sleep(200);
@@ -70,9 +233,9 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
                         System.out.println("1 caught: "+e);
                     }
                 try {
-                    String ipAddress=future.get();
-                    if(ipAddress!=null) {
-                        System.out.println("futire.get() returns: "+ipAddress);
+                    InetAddress inetAddress=future.get();
+                    if(inetAddress!=null) {
+                        System.out.println("future.get() returns: "+inetAddress);
                         //Toast.makeText(MainActivity.this,"wifi ip address is: "+ipAddress,Toast.LENGTH_LONG).show(); // throws: Can't create handler inside thread that has not called Looper.prepare()
                         gotWifiUpOrFail=true;
                         break;
@@ -93,7 +256,7 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
         }
     }
     void setupAudioPlayer() {
-        ((Audio.Bndroid)Audio.audio).setCallback(new Callback<Audio.Sound>() {
+        ((AndroidAudio)Audio.audio).setCallback(new Callback<Audio.Sound>() {
             @Override
             public void call(Audio.Sound sound) {
                 Integer id=id(sound);
@@ -135,101 +298,38 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
             }
         });
     }
-    void startTablet(Set<InetAddress> addresses) {
-        p("g0: "+new Group.Groups().groups.get("g0"));
-        Map<String,Required> requireds=new TreeMap<>(new Group.Groups().groups.get("g0"));
-        group=new Group("1",requireds,MessageReceiver.Model.mark1);
-        p("group: "+group);
-        String tabletId=group.getTabletIdFromInetAddress(addresses.iterator().next(),null);
-        p("tablet id: "+tabletId);
-        tablet=Tablet.factory.create2(tabletId,group);
-        p("tablet: "+tablet);
-        p("before: group: "+group);
-        group=((Group.TabletImpl2)tablet).group();
-        p("after: group: "+group);
-        p(" period: "+tablet.histories().reportPeriod);
-        tablet.model().addObserver(this);
-        tablet.model().addObserver(new AudioObserver(tablet.model()));
-        ((Group.TabletImpl2)tablet).startListening();
-    }
     void waitForWifi() {
+        p("waiting for wifi.");
         new Thread(new IpAddressCallable()).start();
-        int n=20;
+        int n=10;
         for(int i=1;i<=n&&!gotWifiUpOrFail;i++)
             try {
-                Thread.sleep(10);
+                Thread.sleep(1000);
             } catch(InterruptedException e) {
                 System.out.println("5 caught: "+e);
             }
     }
     Histories histories(int index) {
-        int tabletIndex=index-tablet.model().colors.rows*tablet.model().colors.columns;
-        if(0<=tabletIndex&&tabletIndex<group.keys().size()) {
-            String tabletId=IO.aTabletId(tabletIndex+1);
-            return tabletId!=null?group.required(tabletId).histories():null;
-        } else {
-            l.severe(index+" is bad index!");
-            return null;
+        Histories histories=null;
+        if(tablet!=null) {
+            int tabletIndex=index-tablet.model().colors.rows*tablet.model().colors.columns;
+            if(0<=tabletIndex&&tabletIndex<group.keys().size()) {
+                String tabletId=IO.aTabletId(tabletIndex+1);
+                histories=group.required(tabletId).histories();
+            } else {
+                l.severe(index+" is bad index!");
+            }
         }
+        return histories;
     }
-    void initialize() {
-        p("enter initialize at: "+et);
-        Logger global=Logger.getLogger(Logger.GLOBAL_LOGGER_NAME);
-        p("global logger: "+global);
-        LoggingHandler.init();
-        LoggingHandler.setLevel(Level.WARNING);
-        LoggingHandler.toggleSockethandlers();
-        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
-        l.info("android id: "+Secure.getString(getContentResolver(),Secure.ANDROID_ID));
-        setupAudioPlayer();
-        setupToast();
-        l.info("playing sound.");
-        Audio.audio.play(Sound.electronic_chime_kevangc_495939803);
-        InetAddress inetAddress=null;
-        Set<InetAddress> addresses=addressesWith(tabletNetworkPrefix);
-        l.info("addresses: "+addresses);
-        if(addresses.size()==0)
-            Toast.makeText(this,"can not get ip address!",Toast.LENGTH_LONG).show();
-        startTablet(addresses);
-        p("colors: "+tablet.model().colors);
-        try {
-            Thread.sleep(100);
-        } catch(Exception e) {
-        }
-        buttons=new Button[tablet.model().colors.n];
-        RelativeLayout relativeLayout=builGui();
-        relativeLayout.setBackgroundColor(tablet.model().colors.background|0xff000000);
-        guiAdapterABC=new GuiAdapterABC(tablet) {
-            @Override
-            public void processClick(int index) {
-                int id=index+1;
-                if(1<=id&&id<=tablet.model().buttons)
-                    tablet.click(index+1);
-                else {
-                    Histories histories=histories(index);
-                    Toast.makeText(MainActivity.this,""+histories,Toast.LENGTH_LONG).show();
+    void setButtonColor(final Button button,final int color) {
+        if(button!=null)
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    button.setBackgroundColor(color);
                 }
-            }
-            @Override
-            public void setButtonText(final int id,final String string) {
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        buttons[id-1].setText(string);
-                    }
-                });
-            }
-            @Override
-            public void setButtonState(final int id,final boolean state) {
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        buttons[id-1].setBackgroundColor(tablet.model().colors.aColor(id-1,state));
-                    }
-                });
-            }
-        };
-        setContentView(relativeLayout);
+            });
     }
     private Button getButton(int size,String string,float fontsize,int rows,int columns,int i,int x,int y) {
         Button button;
@@ -241,128 +341,43 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
         params=new RelativeLayout.LayoutParams(size/3,size/3);
         params.leftMargin=x;
         params.topMargin=y;
-        p("other: "+i+", left margin="+params.leftMargin+", top margin="+params.topMargin);
+        //p("other: "+i+", left margin="+params.leftMargin+", top margin="+params.topMargin);
         button.setLayoutParams(params);
         button.setText(string);
-        button.setBackgroundColor(tablet.model().colors.aColor(tablet.model().colors.whiteOn));
+        button.setBackgroundColor(colors.aColor(colors.whiteOn));
         button.setOnClickListener(this);
         return button;
-    }
-    RelativeLayout builGui() {
-        DisplayMetrics metrics=new DisplayMetrics();
-        getWindowManager().getDefaultDisplay().getMetrics(metrics);
-        System.out.println(metrics);
-        final int size=225;
-        final float fontsize=size*.30f;
-        System.out.println(size+" "+(metrics.widthPixels*1./7));
-        final int x0=size/4, y0=75;
-        p("x0="+x0+", y0="+y0);
-        RelativeLayout relativeLayout=new RelativeLayout(this);
-        RelativeLayout.LayoutParams params=null;
-        final int rows=tablet.model().colors.rows;
-        final int columns=tablet.model().colors.columns;
-        for(int i=0;i<rows*columns;i++) {
-            Button button=new Button(this);
-            button.setId(i); // id is index!
-            button.setTextSize(fontsize);
-            button.setGravity(Gravity.CENTER);
-            params=new RelativeLayout.LayoutParams(size,size);
-            params.leftMargin=(int)(x0+i%columns*1.2*size);
-            params.topMargin=(int)(y0+i/columns*size*1.2);
-            p("button: "+i+", left margin="+params.leftMargin+", top margin="+params.topMargin);
-            button.setLayoutParams(params);
-            if(i/columns%2==0)
-                button.setText(tablet.model().getButtonText(Integer.valueOf(i+1),tablet.tabletId()));
-            button.setBackgroundColor(tablet.model().colors.aColor(i,false));
-            button.setOnClickListener(this);
-            buttons[i]=button;
-            relativeLayout.addView(button);
-        }
-        Button button=new Button(this);
-        button.setId(rows*columns); // id is index!
-        button.setTextSize(fontsize);
-        button.setGravity(Gravity.CENTER);
-        params=new RelativeLayout.LayoutParams(size,size);
-        params.leftMargin=(int)(x0+(columns+1.2)*size);
-        params.topMargin=y0;
-        p("reset: left margin="+params.leftMargin+", top margin="+params.topMargin);
-        button.setLayoutParams(params);
-        button.setText(tablet.model().getButtonText(tablet.model().resetButtonId,tablet.tabletId()));
-        button.setBackgroundColor(tablet.model().colors.aColor(rows*columns,false));
-        button.setOnClickListener(this);
-        buttons[rows*columns]=button;
-        relativeLayout.addView(button);
-        // add stuff
-        p("group: "+group);
-        status=new Button[group.keys().size()];
-        for(int i=0;i<group.keys().size();i++) {
-            double x=x0+i*1.2*size/3;
-            double y=y0+(3-.5)*size*1.2;
-            button=getButton(size,""+Integer.valueOf(i+1),fontsize,rows,columns,i,(int)x,(int)y);
-            status[i]=button;
-            relativeLayout.addView(button);
-        }
-        if(false) {
-            int testButtons=11;
-            test=new Button[testButtons];
-            for(int i=0;i<testButtons;i++) {
-                double x=x0+i*1.2*size/3;
-                double y=y0+(3-.5)*size*1.2;
-                y-=size*1.2/3;
-                int r=(int)(i*.1*100);
-                if(r>=100)
-                    r=99;
-                else if(r<0)
-                    r=0;
-                String text=""+r;
-                if(text.length()<2)
-                    text+='0';
-                button=getButton((int)(size*1.),text,(float)(fontsize*.6),rows,columns,i,(int)x,(int)y);
-                p("setting backgroud to: "+Colors.toString(Colors.smooth(i*.1)));
-                button.setBackgroundColor(Colors.aColor(Colors.smooth(i*.1)));
-                test[i]=button;
-                relativeLayout.addView(button);
-            }
-        }
-        return relativeLayout;
     }
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         p("onCreate at: "+et);
         super.onCreate(savedInstanceState);
-        p("after super.onCreate at: "+et);
+        l.info("android id: "+Settings.Secure.getString(getContentResolver(),Settings.Secure.ANDROID_ID));
+        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
         setContentView(R.layout.activity_main);
-        p("start wait for wifi at: "+et);
-        waitForWifi();
-        p("end wait for wifi at: "+et);
-        initialize();
-        setTitle(tablet.tabletId());
-        p("exit onCreate at: "+et+" &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&");
+        setupToast();
+        Logger global=Logger.getLogger(Logger.GLOBAL_LOGGER_NAME);
+        LoggingHandler.init();
+        LoggingHandler.setLevel(Level.WARNING);
+        if(false)
+            LoggingHandler.toggleSockethandlers();
+        Map<String,Required> requireds=new TreeMap<>(new Group.Groups().groups.get("g0"));
+        group=new Group("1",requireds,MessageReceiver.Model.mark1);
+        p("starting runner at: "+et);
+        new Thread(androidRunner=new AndroidRunner(group,this),"tablet runner").start();
+        p("exit onCreate at: "+et);
     }
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         l.info("on create options menu");
         super.onCreateOptionsMenu(menu);
         for(Enums.MenuItem menuItem : Enums.MenuItem.values())
-            if(menuItem!=Enums.MenuItem.Level) {
-                System.out.println("add menu item: "+menuItem);
+            if(menuItem!=Enums.MenuItem.Level)
                 menu.add(Menu.NONE,menuItem.ordinal(),Menu.NONE,menuItem.name());
-            }
         menu.add(Menu.NONE,Enums.MenuItem.values().length,Menu.NONE,"Restart");
         SubMenu subMenu=menu.addSubMenu(Menu.NONE,99,Menu.NONE,"Level");
-        for(Enums.LevelSubMenuItem levelSubMenuItem : Enums.LevelSubMenuItem.values()) {
-            System.out.println("add menu item: "+levelSubMenuItem);
+        for(Enums.LevelSubMenuItem levelSubMenuItem : Enums.LevelSubMenuItem.values())
             subMenu.add(Menu.NONE,Enums.MenuItem.values().length+levelSubMenuItem.ordinal()/*hack!*/,Menu.NONE,levelSubMenuItem.name());
-        }
-        //addSubMenu(int groupId, int itemId, int order, CharSequence title)
-        /*
-        SubMenu fileMenu = menu.addSubMenu("File");
-        SubMenu editMenu = menu.addSubMenu("Edit");
-        fileMenu.add(FILE, NEW_MENU_ITEM, 0, "new");
-        fileMenu.add(FILE, SAVE_MENU_ITEM, 1, "save");
-        editMenu.add(EDIT, UNDO_MENU_ITEM, 0, "undo");
-        editMenu.add(EDIT, REDO_MENU_ITEM, 1, "redo");
-        */
         return true;
     }
     // http://stackoverflow.com/questions/2470870/force-application-to-restart-on-first-activity
@@ -388,7 +403,7 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
         int id=item.getItemId();
         if(Enums.MenuItem.isItem(id))
             if(Enums.MenuItem.item(id).equals(Enums.MenuItem.Quit)) {
-                alert("foo",false);
+                alert("Quitting",false);
                 finish();
                 l.severe("after finish! &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&");
                 try {
@@ -407,7 +422,7 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
             i.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
             startActivity(i);
         } else if(Enums.LevelSubMenuItem.isItem(id-Enums.MenuItem.values().length)) {
-            Enums.LevelSubMenuItem.doItem(id-Enums.MenuItem.values().length,tablet); // hack!
+            Enums.LevelSubMenuItem.doItem(id-Enums.MenuItem.values().length); // hack!
             return true;
         } else
             l.severe(item+" is not atablet men item!");
@@ -415,13 +430,16 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
     }
     @Override
     protected void onDestroy() {
-        //Main.stop();
-        // what should we stop here?
+        p("in on destry() &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&");
+        if(androidRunner!=null)
+            androidRunner.thread.interrupt();
         if(tablet!=null)
             ((Group.TabletImpl2)tablet).stopListening();
         else
             System.out.println("tablet is null in on destroy!");
         super.onDestroy();
+        //System.runFinalizersOnExit(true);
+        //System.exit(0);
     }
     @Override
     public void onClick(final View v) {
@@ -429,88 +447,38 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
         if(v instanceof Button) {
             Button button=(Button)v;
             int index=button.getId();
-            guiAdapterABC.processClick(index);
+            if(guiAdapterABC!=null)
+                guiAdapterABC.processClick(index);
+            else
+                l.severe("gui adapter is null!");
         } else
             l.severe("not a button!");
         if(lastClick!=Double.NaN)
             p((et.etms()-lastClick)+" between clicks.");
         lastClick=et.etms();
-        Iterator<String> s=group.keys().iterator();
-        p("tablets: "+group.keys());
-        for(int i=0;i<group.keys().size();i++) {
-            Histories histories=group.required(s.next()).histories();
-            p("histories: "+histories);
-            double recentFaulureRate=histories.senderHistory.history.recentFailureRate();
-            int color=histories.senderHistory.history.attempts()==0?tablet.model().colors.aColor(Colors.yellow):tablet.model().colors.aColor(tablet.model().colors.smooth(recentFaulureRate));
-            p("recent failure rate: "+recentFaulureRate+", color: "+Colors.toString(color));
-            status[i].setBackgroundColor(color);
-        }
+        if(tablet!=null) {
+            Iterator<String> s=group.keys().iterator();
+            p("tablets: "+group.keys());
+            for(int i=0;i<group.keys().size();i++) {
+                Histories histories=group.required(s.next()).histories();
+                p("histories: "+histories);
+                double recentFaulureRate=histories.senderHistory.history.recentFailureRate();
+                int color=histories.senderHistory.history.attempts()==0?colors.aColor(Colors.yellow):colors.aColor(colors.smooth(recentFaulureRate));
+                p("recent failure rate: "+recentFaulureRate+", color: "+Colors.toString(color));
+                status[i].setBackgroundColor(color);
+            }
+        } else
+            p("tablet is null!");
     }
     @Override
     public void update(Observable o,Object hint) {
-        if(o==tablet.model())
+        if(model.equals(o))
             guiAdapterABC.update(o,hint);
         else
-            System.out.println("no gui for model: "+o);
-    }
-    void retry() {
-        WifiManager wifiMan=(WifiManager)getSystemService(Context.WIFI_SERVICE);
-        WifiInfo wifiInf;
-        int ipAddress;
-        List<WifiConfiguration> wifiConfigurations=wifiMan.getConfiguredNetworks();
-        l.info("wifi configurations (all): "+wifiConfigurations.size());
-        for(WifiConfiguration wifiConfiguration : wifiConfigurations) {
-            l.info("wifi configuration status is disabled: "+(wifiConfiguration.status==WifiConfiguration.Status.DISABLED));
-            //l.info("wifi configuration toString(): "+wifiConfiguration.toString());
-            if(wifiConfiguration.toString().contains(tabletNetworkPrefix)) {
-                //p("IP config: "+wifiConfiguration.getIpConfiguration());
-                //l.info("found our network: "+wifiConfiguration.toString());
-                int networkId=wifiConfiguration.networkId;
-                l.info("found our network id: "+networkId);
-                boolean ok=wifiMan.disconnect();
-                l.info("disconnect() returns: "+ok);
-                l.info("enabling our network: "+networkId);
-                // https://code.google.com/p/android-developer-preview/issues/detail?id=2218
-                ok=wifiMan.enableNetwork(networkId,true);
-                l.info("enableNetwork() returns: "+ok);
-                l.info("trying to recommect to wifi.");
-                ok=wifiMan.reconnect();
-                l.info("reconnect returns: "+ok);
-                if(ok) {
-                    wifiMan=(WifiManager)getSystemService(Context.WIFI_SERVICE);
-                    wifiInf=wifiMan.getConnectionInfo();
-                    p("wifi inf: "+wifiInf);
-                    ipAddress=wifiInf.getIpAddress();
-                    l.info("wifi ip adress: "+ipAddress);
-                }
-                break;
-            }
-        }
-    }
-    String getIpAddressFromWifiManager() {
-        WifiManager wifiMan=(WifiManager)getSystemService(Context.WIFI_SERVICE);
-        p("isWifiEnabled() returns: "+wifiMan.isWifiEnabled());
-        WifiInfo wifiInf=wifiMan.getConnectionInfo();
-        p("wifi info: "+wifiInf);
-        int ipAddress=wifiInf.getIpAddress();
-        p("wifi ip adress: "+ipAddress);
-        if(ByteOrder.nativeOrder().equals(ByteOrder.LITTLE_ENDIAN))
-            ipAddress=Integer.reverseBytes(ipAddress);
-        p("ipAddress: "+Integer.toHexString(ipAddress));
-        byte[] ipByteArray=BigInteger.valueOf(ipAddress).toByteArray();
-        String ipAddressString=null;
-        try {
-            ipAddressString=InetAddress.getByAddress(ipByteArray).getHostAddress();
-        } catch(UnknownHostException ex) {
-            l.warning("Unable to get host address for: "+Integer.toHexString(ipAddress));
-            if(true)
-                retry();
-        }
-        return ipAddressString;
+            System.out.println("not our model: "+o);
     }
     {
         p("<init> "+et);
-        new Thread(new IpAddressCallable()).start();
     }
     static final Et et=new Et();
     static {
@@ -519,15 +487,14 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
     Double lastClick=Double.NaN;
     ExecutorService executorService=Executors.newFixedThreadPool(10);
     boolean gotWifiUpOrFail=false;
-    GuiAdapterABC guiAdapterABC;
-    Tablet tablet;
+    GuiAdapter.GuiAdapterABC guiAdapterABC;
     Group group;
+    MessageReceiver.Model model;
+    Colors colors;
+    Tablet tablet;
     MediaPlayer mediaPlayer;
     TextView bottom; // was used for messages, put it back
-    Button[] buttons;
-    Button[] status;
-    Button[] test;
-    SocketHandler socketHandler;
-    final Logger l=Logger.getLogger(getClass().getName());
-    final static Logger staticLogger=Logger.getLogger(MainActivity.class.getName());
+    Button[] buttons, status, test;
+    Button wifiStatus, routerStatus;
+    AndroidRunner androidRunner;
 }
