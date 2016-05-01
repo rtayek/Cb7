@@ -5,7 +5,7 @@ import android.test.*;
 import android.util.*;
 import android.widget.*;
 
-import static com.tayek.tablet.io.IO.*;
+import static com.tayek.io.IO.*;
 import static org.junit.Assert.*;
 
 import java.io.*;
@@ -27,7 +27,7 @@ public class MainActivityInstrumentationTestCase extends ActivityInstrumentation
     }
     @Test
     public void testForSanity() {
-        assertEquals(mainActivity.tablet.colors.n,mainActivity.buttons.length);
+        assertEquals(mainActivity.model.colors.n,mainActivity.buttons.length);
     }
     MainActivity mainActivity;
 }

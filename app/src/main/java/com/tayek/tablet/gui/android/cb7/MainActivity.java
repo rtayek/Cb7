@@ -6,7 +6,6 @@ import android.media.*;
 import android.net.wifi.*;
 import android.os.*;
 import android.provider.*;
-import android.provider.Settings.*;
 import android.util.*;
 import android.view.*;
 import android.view.View;
@@ -17,7 +16,6 @@ import com.tayek.io.*;
 
 import static com.tayek.io.IO.*;
 
-import com.tayek.io.Audio.*;
 import com.tayek.io.Audio.Factory.FactoryImpl.AndroidAudio;
 import com.tayek.tablet.*;
 import com.tayek.tablet.io.*;
@@ -25,7 +23,6 @@ import com.tayek.utilities.*;
 
 import static java.lang.Math.round;
 
-import java.io.*;
 import java.lang.*;
 import java.lang.System;
 import java.math.*;
@@ -40,6 +37,15 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
     @Override
     public Tablet tablet() {
         return tablet;
+    }
+    @Override public void setStatusText(final String text) {
+        p("set status: "+text);
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                setTitle(text);
+            }
+        });
     }
     @Override
     public void setTablet(Tablet tablet) {
@@ -364,7 +370,7 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
         Map<String,Required> requireds=new TreeMap<>(new Group.Groups().groups.get("g0"));
         group=new Group("1",requireds,MessageReceiver.Model.mark1);
         p("starting runner at: "+et);
-        new Thread(androidRunner=new AndroidRunner(group,this),"tablet runner").start();
+        new Thread(runner=new Runner(group,this),"tablet runner").start();
         p("exit onCreate at: "+et);
     }
     @Override
@@ -431,8 +437,8 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
     @Override
     protected void onDestroy() {
         p("in on destry() &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&");
-        if(androidRunner!=null)
-            androidRunner.thread.interrupt();
+        if(runner!=null)
+            runner.thread.interrupt();
         if(tablet!=null)
             ((Group.TabletImpl2)tablet).stopListening();
         else
@@ -496,5 +502,5 @@ public class MainActivity extends Activity implements Observer, View.OnClickList
     TextView bottom; // was used for messages, put it back
     Button[] buttons, status, test;
     Button wifiStatus, routerStatus;
-    AndroidRunner androidRunner;
+    Runner runner;
 }
