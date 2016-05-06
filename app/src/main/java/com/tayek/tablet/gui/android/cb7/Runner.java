@@ -22,13 +22,12 @@ class Runner extends RunnerABC {
     final String key="com.tayek.tablet.sharedPreferencesKey";
     final SharedPreferences sharedPreferences; // add inet address and maybe service to preferences?
     final MainActivity mainActivity;
+    Gui gui;
     Runner(final Group group,final MainActivity mainActivity) {
-        super(group,tabletNetworkPrefix);
+        super(group,tabletRouter,tabletRouterPrefix);
         // group, model, colors, audio observer are all set up now.
         this.mainActivity=mainActivity;
-        mainActivity.group=group;
-        mainActivity.model=model;
-        mainActivity.colors=colors;
+        gui=new Gui(mainActivity,group,model);
         String key="com.tayek.tablet.sharedPreferencesKey";
         sharedPreferences=mainActivity.getSharedPreferences(key,Context.MODE_PRIVATE);
         //sharedPreferences.edit().clear().commit(); // only if we have to
@@ -55,71 +54,48 @@ class Runner extends RunnerABC {
     }
     @Override
     public void init() {
-        mainActivity.setupAudioPlayer();
+        mainActivity.networkStuff.setupAudioPlayer();
         Audio.audio.play(Audio.Sound.glass_ping_go445_1207030150);
     }
     @Override
     public void buildGui() {
         p("building gui.");
-        mainActivity.colors=model.colors;
-        final RelativeLayout relativeLayout=mainActivity.builGui();
+        final RelativeLayout relativeLayout=gui.builGui();
         mainActivity.runOnUiThread(new Runnable() {
             @Override
             public void run() {
                 mainActivity.setContentView(relativeLayout);
             }
         });
-        gui=mainActivity;
-        model.addObserver(mainActivity);
+        hasATablet=gui;
+        model.addObserver(gui);
         p("building gui adapter.");
-        guiAdapterABC=new GuiAdapter.GuiAdapterABC(model) { // move this out of runner
-            @Override
-            public void setStatusText(String text) {
-            }
-            @Override
-            public void processClick(int index) {
-                int id=index+1;
-                if(tablet!=null)
-                    if(1<=id&&id<=model.buttons)
-                        tablet.click(index+1);
-                    else { // some other button
-                        Histories histories=mainActivity.histories(index);
-                        Toast.makeText(mainActivity,""+histories,Toast.LENGTH_LONG).show();
-                    }
-            }
-            @Override
-            public void setButtonText(final int id,final String string) {
-                mainActivity.runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        mainActivity.buttons[id-1].setText(string);
-                    }
-                });
-            }
-            @Override
-            public void setButtonState(final int id,final boolean state) {
-                mainActivity.runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        mainActivity.buttons[id-1].setBackgroundColor(colors.aColor(id-1,state));
-                    }
-                });
-            }
-        };
-        mainActivity.guiAdapterABC=guiAdapterABC;
-        gui.setTablet(null);
+        guiAdapterABC=gui.buildGuiAdapter();
+        gui.guiAdapterABC=guiAdapterABC;
+        hasATablet.setTablet(null);
         guiAdapterABC.setTablet(null);
         p("gui adapter: "+guiAdapterABC);
         p("gui built.");
     }
     @Override
-    protected void loop() {
-        super.loop();
+    protected void loop(int n) {
+        super.loop(n);
+        p("group: "+group);
+        if(!isNetworkInterfaceUp) {
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    InetAddress inetAddress=mainActivity.networkStuff.getIpAddressFromWifiManager();
+                }
+            },"get ipaddress from wifi mabager").start();
+
+        }
         mainActivity.runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                mainActivity.wifiStatus.setBackgroundColor(Colors.aColor(isNetworkInterfaceUp?Colors.green:Colors.red));
-                mainActivity.routerStatus.setBackgroundColor(Colors.aColor(isRouterOk?Colors.green:Colors.red));
+                gui.wifiStatus.setBackgroundColor(Colors.aColor(isNetworkInterfaceUp?Colors.green:Colors.red));
+                gui.routerStatus.setBackgroundColor(Colors.aColor(isRouterOk?Colors.green:Colors.red));
+                gui.singleStatus.setBackgroundColor(Colors.aColor(isNetworkInterfaceUp&&isRouterOk?Colors.green:Colors.red));
             }
         });
     }
