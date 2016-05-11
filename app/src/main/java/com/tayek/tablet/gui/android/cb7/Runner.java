@@ -3,6 +3,7 @@ import android.content.*;
 import android.content.pm.*;
 import android.provider.*;
 import android.util.*;
+import android.view.*;
 import android.widget.*;
 
 import com.tayek.*;
@@ -53,14 +54,15 @@ class Runner extends RunnerABC {
         p("prefs: "+prefs);
     }
     @Override
-    public void init() {
+    public void init(MessageReceiver.Model model) {
         mainActivity.networkStuff.setupAudioPlayer();
         Audio.audio.play(Audio.Sound.glass_ping_go445_1207030150);
     }
     @Override
-    public void buildGui() {
+    public void buildGui(MessageReceiver.Model model) {
         p("building gui.");
         final RelativeLayout relativeLayout=gui.builGui();
+        gui.setStatusVisibility(gui.status[0].getVisibility()==View.VISIBLE?View.INVISIBLE:View.VISIBLE);
         mainActivity.runOnUiThread(new Runnable() {
             @Override
             public void run() {

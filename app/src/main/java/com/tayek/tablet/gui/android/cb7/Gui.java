@@ -4,17 +4,19 @@ import android.content.*;
 import android.util.*;
 import android.view.*;
 import android.widget.*;
+
 import com.tayek.*;
 import com.tayek.io.*;
 import com.tayek.tablet.*;
 import com.tayek.tablet.io.*;
 import com.tayek.utilities.*;
+
 import java.util.*;
 import java.util.concurrent.*;
 
 import static com.tayek.io.IO.l;
 import static com.tayek.io.IO.p;
-class Gui implements Observer, View.OnClickListener, Tablet.HasATablet{
+class Gui implements Observer, View.OnClickListener, Tablet.HasATablet {
     Gui(MainActivity mainActivity,Group group,MessageReceiver.Model model) {
         this.mainActivity=mainActivity;
         this.et=mainActivity.et;
@@ -60,7 +62,6 @@ class Gui implements Observer, View.OnClickListener, Tablet.HasATablet{
         l.info("showing alert.");
         alert.show();
     }
-
     private Button getButton(int size,String string,float fontsize,int rows,int columns,int i,int x,int y) {
         return getButton(size,size,string,fontsize,rows,columns,i,x,y);
     }
@@ -129,20 +130,24 @@ class Gui implements Observer, View.OnClickListener, Tablet.HasATablet{
         buttons[rows*columns]=button;
         relativeLayout.addView(button);
         status=new Button[group.keys().size()];
-        for(int i=0;i<group.keys().size();i++) {
+        int i=0;
+        for(String key : group.keys()) {
             double x=x0+i*1.2*size/3;
             double y=y0+(3-.5)*size*1.2;
             button=getButton(size/3,""+Integer.valueOf(i+1),fontsize,rows,columns,i,(int)x,(int)y);
             status[i]=button;
+            String tabletId=group.required(key).id;
+            String shortId=group.required(key).shortId();
+            indexToTabletId.put(i,tabletId);
             relativeLayout.addView(button);
+            i++;
         }
-        int i=group.keys().size();
+        i=group.keys().size(); // for locating the wifi and router status buttons
         double xs=x0;
         double ys=y0+2*size*1.2;
         lineStatus=getButton(6*size,size/3,"w",fontsize,rows,columns,i,(int)xs,(int)ys);
         relativeLayout.addView(lineStatus);
         //yr+=1.2*size/3;
-
         double xr=x0+i*1.2*size/3;
         double yr=y0+(3-.5)*size*1.2;
         // set layout params?
@@ -237,16 +242,28 @@ class Gui implements Observer, View.OnClickListener, Tablet.HasATablet{
         }
         return histories;
     }
-
     public void onClick(final View v) {
         p("click &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&");
         if(v instanceof Button) {
             Button button=(Button)v;
-            int index=button.getId();
-            if(guiAdapterABC!=null)
-                guiAdapterABC.processClick(index);
-            else
-                l.severe("gui adapter is null!");
+            Integer index=button.getId();
+            Integer id=index+1;
+            if(1<=id&&id<=model.buttons) {
+                if(guiAdapterABC!=null)
+                    guiAdapterABC.processClick(index);
+                else
+                    p("guiAdapterABC is null!");
+            } else {
+                p("index: "+index);
+                Integer key=index-model.buttons;
+                String tabletId=indexToTabletId.get(key);
+                if(tabletId!=null) {
+                    Histories histories=group.required(tabletId).histories();
+                    // p("histories for: "+tabletId+": "+histories);
+                    Toast.makeText(mainActivity,"histories for: "+tabletId+": "+histories,Toast.LENGTH_LONG).show();
+                } else
+                    p("no entry for key: "+key+" in: "+indexToTabletId);
+            }
         } else
             l.severe("not a button!");
         if(lastClick!=Double.NaN)
@@ -309,9 +326,10 @@ class Gui implements Observer, View.OnClickListener, Tablet.HasATablet{
     final Colors colors;
     TextView bottom; // was used for messages, put it back
     Button[] buttons, status, test;
-    Button lineStatus, wifiStatus, routerStatus,singleStatus;
+    Button lineStatus, wifiStatus, routerStatus, singleStatus;
     Double lastClick=Double.NaN;
     ExecutorService executorService=Executors.newFixedThreadPool(10);
     GuiAdapter.GuiAdapterABC guiAdapterABC;
+    final Map<Integer,String> indexToTabletId=new TreeMap<>();
     Tablet tablet;
 }

@@ -2,6 +2,8 @@ package com.tayek.tablet.gui.android.cb7;
 import android.content.*;
 import static com.tayek.io.IO.p;
 class AndroidReceivers {
+    // http://stackoverflow.com/questions/29458927/classnotfoundexception-unable-to-instantiate-broadcastreceiver
+    //  set multiDexEnabled = false
     static class BootReceiver extends BroadcastReceiver {
         @Override
         public void onReceive(Context context,Intent intent) {

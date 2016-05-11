@@ -7,7 +7,7 @@ android {
     compileSdkVersion 23
     buildToolsVersion "23.0.1"
     lintOptions {
-        abortOnError false
+                                                                                           abortOnError false
     }
     defaultConfig {
         applicationId "com.tayek.tablet.gui.android.cb7"

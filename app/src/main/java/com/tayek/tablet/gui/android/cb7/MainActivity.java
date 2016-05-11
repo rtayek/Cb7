@@ -57,14 +57,16 @@ public class MainActivity extends Activity implements View.OnClickListener {
         LoggingHandler.setLevel(Level.WARNING);
         if(true)
             LoggingHandler.toggleSockethandlers();
-        Map<String,Required> requireds=new TreeMap<>(new Group.Groups().groups.get("big0"));
+        Map<String,Required> requireds=new TreeMap<>(new Group.Groups().groups.get("g0"));
         Group group=new Group("1",requireds,MessageReceiver.Model.mark1);
         p("starting runner at: "+et);
         p("requireds: "+requireds);
         new Thread(runner=new Runner(group,this),"tablet runner").start();
         p("exit onCreate at: "+et);}
         catch(Exception e) {
+            e.printStackTrace();
             l.severe("on create caught: "+e);
+            //throw e;
         }
     }
     @Override
@@ -108,7 +110,7 @@ public class MainActivity extends Activity implements View.OnClickListener {
         if(runner!=null)
             runner.thread.interrupt();
         if(runner.gui.tablet!=null)
-            ((Group.TabletImpl2)runner.gui.tablet).stopListening();
+            ((Group.TabletImpl2)runner.gui.tablet).stopServer();
         else
             System.out.println("tablet is null in on destroy!");
         super.onDestroy();
