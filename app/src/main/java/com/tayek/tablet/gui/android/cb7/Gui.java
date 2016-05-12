@@ -289,7 +289,9 @@ class Gui implements Observer, View.OnClickListener, Tablet.HasATablet {
             int id=item.getItemId();
             if(Enums.MenuItem.isItem(id))
                 if(Enums.MenuItem.item(id).equals(Enums.MenuItem.Quit)) {
-                    alert("Quitting",false);
+                    //alert("Quitting",false);
+                    tablet.stopServer();
+                    mainActivity.runner.thread.interrupt();
                     mainActivity.finish();
                     l.severe("after finish! &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&");
                     try {

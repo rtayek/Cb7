@@ -55,8 +55,8 @@ public class MainActivity extends Activity implements View.OnClickListener {
         Logger global=Logger.getLogger(Logger.GLOBAL_LOGGER_NAME);
         LoggingHandler.init();
         LoggingHandler.setLevel(Level.WARNING);
-        if(true)
-            LoggingHandler.toggleSockethandlers();
+        p("here:");
+        LoggingHandler.toggleSockethandlers(); // looks like i need to wait for this?
         Map<String,Required> requireds=new TreeMap<>(new Group.Groups().groups.get("g0"));
         Group group=new Group("1",requireds,MessageReceiver.Model.mark1);
         p("starting runner at: "+et);
