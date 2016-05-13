@@ -35,6 +35,7 @@ import java.util.logging.*;
 //http://davidrs.com/wp/fix-android-device-not-showing-up-on-windows-8/
 //http://stackoverflow.com/questions/8818290/how-to-connect-to-a-specific-wifi-network-in-android-programmatically
 //http://stackoverflow.com/questions/24908280/automatically-and-programmatically-connecting-to-a-specific-wifi-access-point
+//https://github.com/eryngii-mori/android-developer-preview/issues/2218
 public class MainActivity extends Activity implements View.OnClickListener {
     void setButtonColor(final Button button,final int color) {
         if(button!=null)
@@ -60,13 +61,6 @@ public class MainActivity extends Activity implements View.OnClickListener {
             p("here:");
             LoggingHandler.toggleSockethandlers(); // looks like i need to wait for this?
             // yes, whould wait until wifi is up
-            if(false) {
-                WifiConfiguration wifiConfiguration=networkStuff.getWifiConfiguration("\"tablets\"");
-                if(wifiConfiguration!=null) {
-                    p("tablet wifi configuration: "+wifiConfiguration);
-                    p("wifi status: "+wifiConfiguration.status);
-                }
-            }
             Map<String,Required> requireds=new TreeMap<>(new Group.Groups().groups.get("g0"));
             Group group=new Group("1",requireds,MessageReceiver.Model.mark1);
             p("starting runner at: "+et);

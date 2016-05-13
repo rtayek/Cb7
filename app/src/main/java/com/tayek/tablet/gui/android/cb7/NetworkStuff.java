@@ -19,137 +19,94 @@ public class NetworkStuff {
     }
     void checkWifi() {
         WifiManager wifiManager=(WifiManager)mainActivity.getSystemService(Context.WIFI_SERVICE);
-        List<WifiConfiguration> list=wifiManager.getConfiguredNetworks();
-        for(WifiConfiguration wifiConfiguration : list) {
-            p("configured: "+wifiConfiguration.SSID+", status: "+wifiConfiguration.status+": "+WifiConfiguration.Status.strings[wifiConfiguration.status]+", networkId: "+wifiConfiguration.networkId);
-            if(wifiConfiguration.SSID.equals("\"tablets\""))
-                switch(wifiConfiguration.status) {
-                    case WifiConfiguration.Status.CURRENT:
-                        break;
-                    case WifiConfiguration.Status.DISABLED:
-                        p(wifiConfiguration.SSID+" is disables, try to enable");
-                        boolean ok=wifiManager.enableNetwork(wifiConfiguration.networkId,true);
-                        if(ok) {
-                            p(wifiConfiguration.SSID+" was enabled.");
-                            ok=wifiManager.reconnect();
-                            if(ok)
-                                p(wifiConfiguration.SSID+" says was connected.");
-                            else p(wifiConfiguration.SSID+" says was not connected!");
-                        }
-                        else
-                            p(wifiConfiguration.SSID+" was not enabled!");
-                        break;
-                    case WifiConfiguration.Status.ENABLED:
-                        p(wifiConfiguration.SSID+" is enabled, how to make current?");
-                        break;
-                    default:
-                        l.severe("unknown status: "+wifiConfiguration.status);
-                }
+        if(!wifiManager.isWifiEnabled()) {
+            p("enabling wifi.");
+            boolean ok=wifiManager.setWifiEnabled(true);
+            if(ok)
+                p("wifi was enabled.");
             else
-                switch(wifiConfiguration.status) {
-                    case WifiConfiguration.Status.CURRENT:
-                        p(wifiConfiguration.SSID+": is current, try to diable.");
-                        boolean ok=wifiManager.disableNetwork(wifiConfiguration.networkId);
-                        if(ok)
-                            p(wifiConfiguration.SSID+" was disabled.");
-                        else
-                            p(wifiConfiguration.SSID+" was not disabled!");
-                        break;
-                    case WifiConfiguration.Status.DISABLED:
-                        p(wifiConfiguration.SSID+" is disnabled.");
-                        break;
-                    case WifiConfiguration.Status.ENABLED:
-                        if(!wifiConfiguration.SSID.equals("\"TRENDnet651\"")) {
-                            p(wifiConfiguration.SSID+": is enabled, try to diable.");
-                            ok=wifiManager.disableNetwork(wifiConfiguration.networkId);
+                p("wifi was not enabled!");
+        }
+        List<WifiConfiguration> list=wifiManager.getConfiguredNetworks();
+        if(list!=null)
+            for(WifiConfiguration wifiConfiguration : list) {
+                InetAddress inetAddress=null;
+                p("configured: "+wifiConfiguration.SSID+", status: "+wifiConfiguration.status+": "+WifiConfiguration.Status.strings[wifiConfiguration.status]+", networkId: "+wifiConfiguration.networkId);
+                if(!wifiConfiguration.SSID.equals(tabletWifiSsid))
+                    switch(wifiConfiguration.status) {
+                        case WifiConfiguration.Status.CURRENT:
+                            p(wifiConfiguration.SSID+": is current, try to diable.");
+                            boolean ok=wifiManager.disableNetwork(wifiConfiguration.networkId);
                             if(ok)
                                 p(wifiConfiguration.SSID+" was disabled.");
                             else
                                 p(wifiConfiguration.SSID+" was not disabled!");
-                        } else
-                            p("ignoring: "+wifiConfiguration.SSID);
-                        break;
-                    default:
-                        l.severe("unknown status: "+wifiConfiguration.status);
-                }
-        }
-        WifiConfiguration wifiConfiguration=mainActivity.networkStuff.getWifiConfiguration("\"tablets\""); // wtf
-        if(wifiConfiguration!=null) {
-            p("tablets wifi status: "+wifiConfiguration.status+": "+WifiConfiguration.Status.strings[wifiConfiguration.status]);
-            p("tablets wifi configuration: <<<<<<<<<<<<<<<<<<<<");
-            p("tablets wifi configuration: "+wifiConfiguration);
-            p("emd of tablets wifi configuration: >>>>>>>>>>>>>");
-        }
-    }
-    WifiConfiguration getWifiConfiguration(String ssid) {
-        WifiManager wifiMan=(WifiManager)mainActivity.getSystemService(Context.WIFI_SERVICE);
-        WifiInfo wifiInf;
-        List<WifiConfiguration> wifiConfigurations=wifiMan.getConfiguredNetworks();
-        if(wifiConfigurations==null)
-            return null;
-        for(WifiConfiguration wifiConfiguration : wifiConfigurations)
-            if(wifiConfiguration.SSID.equals(ssid))
-                return wifiConfiguration;
-        return null;
-    }
-    void justIterate() {
-        WifiManager wifiMan=(WifiManager)mainActivity.getSystemService(Context.WIFI_SERVICE);
-        WifiInfo wifiInf;
-        List<WifiConfiguration> wifiConfigurations=wifiMan.getConfiguredNetworks();
-        if(wifiConfigurations==null) {
-            p("no wifi configurations");
-            return;
-        }
-        p("wifi configurations (all): "+wifiConfigurations.size());
-        for(String string : WifiConfiguration.Status.strings)
-            p("wifi status string: "+string);
-        for(WifiConfiguration wifiConfiguration : wifiConfigurations) {
-            p("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<");
-            p("ssid: "+wifiConfiguration.SSID+", bssid: "+wifiConfiguration.BSSID);
-            p("wifi configuration status is disabled: "+(wifiConfiguration.status==WifiConfiguration.Status.DISABLED));
-            //l.info("wifi configuration toString(): "+wifiConfiguration.toString());
-            if(wifiConfiguration.toString().contains(tabletRouterPrefix)) {
-                p("found our network: "+wifiConfiguration.toString());
-                int networkId=wifiConfiguration.networkId;
-                p("found our network id: "+networkId);
-            } else
-                p("does not contain: "+tabletRouterPrefix);
-            p(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>");
-        }
-    }
-    void retry() {
-        WifiManager wifiMan=(WifiManager)mainActivity.getSystemService(Context.WIFI_SERVICE);
-        WifiInfo wifiInf;
-        int ipAddress;
-        List<WifiConfiguration> wifiConfigurations=wifiMan.getConfiguredNetworks();
-        if(wifiConfigurations==null) {
-            return;
-        }
-        l.info("wifi configurations (all): "+wifiConfigurations.size());
-        for(WifiConfiguration wifiConfiguration : wifiConfigurations) {
-            l.info("wifi configuration status is disabled: "+(wifiConfiguration.status==WifiConfiguration.Status.DISABLED));
-            //l.info("wifi configuration toString(): "+wifiConfiguration.toString());
-            if(wifiConfiguration.toString().contains(tabletRouterPrefix)) {
-                //p("IP config: "+wifiConfiguration.getIpConfiguration());
-                //l.info("found our network: "+wifiConfiguration.toString());
-                int networkId=wifiConfiguration.networkId;
-                l.info("found our network id: "+networkId);
-                boolean ok=wifiMan.disconnect();
-                l.info("enabling our network: "+networkId);
-                // https://code.google.com/p/android-developer-preview/issues/detail?id=2218
-                ok=wifiMan.enableNetwork(networkId,true);
-                ok=wifiMan.reconnect();
-                l.info("reconnect returns: "+ok);
-                if(ok) {
-                    wifiMan=(WifiManager)mainActivity.getSystemService(Context.WIFI_SERVICE);
-                    wifiInf=wifiMan.getConnectionInfo();
-                    p("wifi inf: "+wifiInf);
-                    ipAddress=wifiInf.getIpAddress();
-                    l.info("wifi ip adress: "+ipAddress);
-                }
-                break;
+                            break;
+                        case WifiConfiguration.Status.DISABLED:
+                            p(wifiConfiguration.SSID+" is disabled.");
+                            break;
+                        case WifiConfiguration.Status.ENABLED:
+                            if(true||!wifiConfiguration.SSID.equals("\"TRENDnet651\"")) {
+                                p(wifiConfiguration.SSID+": is enabled, try to diable.");
+                                ok=wifiManager.disableNetwork(wifiConfiguration.networkId);
+                                if(ok)
+                                    p(wifiConfiguration.SSID+" was disabled.");
+                                else
+                                    p(wifiConfiguration.SSID+" was not disabled!");
+                            } else
+                                p("ignoring: "+wifiConfiguration.SSID);
+                            break;
+                        default:
+                            l.severe("unknown status: "+wifiConfiguration.status);
+                    }
+                else
+                    switch(wifiConfiguration.status) {
+                        case WifiConfiguration.Status.CURRENT:
+                            p("current connection is: "+tabletWifiSsid);
+                            break;
+                        case WifiConfiguration.Status.DISABLED:
+                            p(wifiConfiguration.SSID+" is disables, try to enable");
+                            p(wifiConfiguration.SSID+" disconnecting first.");
+                            boolean ok=wifiManager.disconnect();
+                            if(ok) {
+                                p("says we disconnected, try to enable.");
+                                ok=wifiManager.enableNetwork(wifiConfiguration.networkId,true);
+                                if(ok) {
+                                    p(wifiConfiguration.SSID+" was enabled, trying to connect.");
+                                    ok=wifiManager.reconnect();
+                                    if(ok) {
+                                        p(wifiConfiguration.SSID+" says is connected.");
+                                        if((inetAddress=getIpAddressFromWifiManager())!=null)
+                                            p("inetAddress: "+inetAddress);
+                                        else
+                                            p("inetAddress is null!");
+                                    } else
+                                        p(wifiConfiguration.SSID+" says was not connected!");
+                                } else
+                                    p(wifiConfiguration.SSID+" was not enabled!");
+                            } else
+                                p("says disconnect failed!"); break;
+                        case WifiConfiguration.Status.ENABLED:
+                            p(wifiConfiguration.SSID+" is enabled, trying to connect.");
+                            p(wifiConfiguration.SSID+" disconnecting first.");
+                            ok=wifiManager.disconnect();
+                            if(ok) {
+                                p("says we disconnected, try to reconnect.");
+                                ok=wifiManager.reconnect();
+                                if(ok) {
+                                    p(wifiConfiguration.SSID+" says is connected.");
+                                    if((inetAddress=getIpAddressFromWifiManager())!=null)
+                                        p("inetAddress: "+inetAddress);
+                                    else
+                                        p("inetAddress is null!");
+                                } else
+                                    p(wifiConfiguration.SSID+" says was not connected!");
+                            } else
+                                p("says disconnect failed!"); break;
+                        default:
+                            l.severe("unknown status: "+wifiConfiguration.status);
+                    }
             }
-        }
     }
     InetAddress getIpAddressFromWifiManager() {
         WifiManager wifiMan=(WifiManager)mainActivity.getSystemService(Context.WIFI_SERVICE);
@@ -169,62 +126,14 @@ public class NetworkStuff {
                 ipAddressString=InetAddress.getByAddress(ipByteArray).getHostAddress();
             } catch(UnknownHostException ex) {
                 l.warning("Unable to get host address for: "+Integer.toHexString(ipAddress));
-                if(true)
-                    retry();
             }
-        } else
-            retry();
+        }
         InetAddress inetAddress=null;
         try {
             inetAddress=InetAddress.getByName(ipAddressString);
         } catch(UnknownHostException e) {
         }
         return inetAddress;
-    }
-    public class IpAddress implements Callable<InetAddress> {
-        @Override
-        public InetAddress call() throws Exception {
-            System.out.println("calling: getIpAddressFromWifiManager()");
-            InetAddress inetAddress=getIpAddressFromWifiManager();
-            System.out.println("getIpAddressFromWifiManager() returns: "+inetAddress);
-            return inetAddress;
-        }
-    }
-    public class IpAddressCallable implements Runnable {
-        @Override
-        public void run() {
-            int n=20;
-            for(int i=1;i<=n;i++) {
-                System.out.println("ipAddressCallable: i="+i);
-                Future<InetAddress> future=mainActivity.runner.gui.executorService.submit(new IpAddress());
-                while(!future.isDone())
-                    try {
-                        Thread.sleep(200);
-                    } catch(InterruptedException e) {
-                        System.out.println("1 caught: "+e);
-                    }
-                try {
-                    InetAddress inetAddress=future.get();
-                    if(inetAddress!=null) {
-                        System.out.println("future.get() returns: "+inetAddress);
-                        //Toast.makeText(MainActivity.this,"wifi ip address is: "+ipAddress,Toast.LENGTH_LONG).show(); // throws: Can't create handler inside thread that has not called Looper.prepare()
-                        gotWifiUpOrFail=true;
-                        break;
-                    }
-                } catch(InterruptedException e) {
-                    System.out.println("2 caught: "+e);
-                } catch(ExecutionException e) {
-                    System.out.println("3 caught: "+e);
-                }
-                try {
-                    Thread.sleep(1_000);
-                } catch(InterruptedException e) {
-                    System.out.println("4 caught: "+e);
-                }
-                System.out.println("---------------------------------");
-            }
-            gotWifiUpOrFail=true;
-        }
     }
     void setupAudioPlayer() {
         ((Audio.Factory.FactoryImpl.AndroidAudio)Audio.audio).setCallback(new IO.Callback<Audio.Sound>() {
@@ -268,17 +177,6 @@ public class NetworkStuff {
                     ; //p("toast was: "+string);
             }
         });
-    }
-    void waitForWifi() {
-        p("waiting for wifi.");
-        new Thread(new IpAddressCallable()).start();
-        int n=10;
-        for(int i=1;i<=n&&!gotWifiUpOrFail;i++)
-            try {
-                Thread.sleep(1000);
-            } catch(InterruptedException e) {
-                System.out.println("5 caught: "+e);
-            }
     }
     final MainActivity mainActivity; // make this just activity!
     boolean gotWifiUpOrFail;

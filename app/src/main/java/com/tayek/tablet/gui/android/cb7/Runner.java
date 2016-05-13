@@ -88,9 +88,9 @@ class Runner extends RunnerABC {
             new Thread(new Runnable() {
                 @Override
                 public void run() {
-                    InetAddress inetAddress=mainActivity.networkStuff.getIpAddressFromWifiManager();
+                    mainActivity.networkStuff.checkWifi();
                 }
-            },"get ipaddress from wifi mabager").start();
+            },"chwckwifi").start();
         }
         mainActivity.runOnUiThread(new Runnable() {
             @Override
@@ -100,6 +100,5 @@ class Runner extends RunnerABC {
                 gui.singleStatus.setBackgroundColor(Colors.aColor(isNetworkInterfaceUp&&isRouterOk?Colors.green:Colors.red));
             }
         });
-        mainActivity.networkStuff.checkWifi();
     }
 }
