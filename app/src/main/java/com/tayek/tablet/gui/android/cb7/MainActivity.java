@@ -33,6 +33,8 @@ import java.util.concurrent.*;
 import java.util.logging.*;
 //https://plus.google.com/103583939320326217147/posts/BQ5iYJEaaEH driver for usb
 //http://davidrs.com/wp/fix-android-device-not-showing-up-on-windows-8/
+//http://stackoverflow.com/questions/8818290/how-to-connect-to-a-specific-wifi-network-in-android-programmatically
+//http://stackoverflow.com/questions/24908280/automatically-and-programmatically-connecting-to-a-specific-wifi-access-point
 public class MainActivity extends Activity implements View.OnClickListener {
     void setButtonColor(final Button button,final int color) {
         if(button!=null)
@@ -46,24 +48,32 @@ public class MainActivity extends Activity implements View.OnClickListener {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         try {
-        p("onCreate at: "+et);
-        super.onCreate(savedInstanceState);
-        l.info("android id: "+Settings.Secure.getString(getContentResolver(),Settings.Secure.ANDROID_ID));
-        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
-        setContentView(R.layout.activity_main);
-        networkStuff.setupToast();
-        Logger global=Logger.getLogger(Logger.GLOBAL_LOGGER_NAME);
-        LoggingHandler.init();
-        LoggingHandler.setLevel(Level.WARNING);
-        p("here:");
-        LoggingHandler.toggleSockethandlers(); // looks like i need to wait for this?
-        Map<String,Required> requireds=new TreeMap<>(new Group.Groups().groups.get("g0"));
-        Group group=new Group("1",requireds,MessageReceiver.Model.mark1);
-        p("starting runner at: "+et);
-        p("requireds: "+requireds);
-        new Thread(runner=new Runner(group,this),"tablet runner").start();
-        p("exit onCreate at: "+et);}
-        catch(Exception e) {
+            p("onCreate at: "+et);
+            super.onCreate(savedInstanceState);
+            l.info("android id: "+Settings.Secure.getString(getContentResolver(),Settings.Secure.ANDROID_ID));
+            setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
+            setContentView(R.layout.activity_main);
+            networkStuff.setupToast();
+            Logger global=Logger.getLogger(Logger.GLOBAL_LOGGER_NAME);
+            LoggingHandler.init();
+            LoggingHandler.setLevel(Level.WARNING);
+            p("here:");
+            LoggingHandler.toggleSockethandlers(); // looks like i need to wait for this?
+            // yes, whould wait until wifi is up
+            if(false) {
+                WifiConfiguration wifiConfiguration=networkStuff.getWifiConfiguration("\"tablets\"");
+                if(wifiConfiguration!=null) {
+                    p("tablet wifi configuration: "+wifiConfiguration);
+                    p("wifi status: "+wifiConfiguration.status);
+                }
+            }
+            Map<String,Required> requireds=new TreeMap<>(new Group.Groups().groups.get("g0"));
+            Group group=new Group("1",requireds,MessageReceiver.Model.mark1);
+            p("starting runner at: "+et);
+            p("requireds: "+requireds);
+            new Thread(runner=new Runner(group,this),"tablet runner").start();
+            p("exit onCreate at: "+et);
+        } catch(Exception e) {
             e.printStackTrace();
             l.severe("on create caught: "+e);
             //throw e;
@@ -105,8 +115,43 @@ public class MainActivity extends Activity implements View.OnClickListener {
         return super.onOptionsItemSelected(item);
     }
     @Override
+    public void onSaveInstanceState(Bundle savedInstanceState) {
+        savedInstanceState.putDouble(savedStateKey,et.etms());
+        super.onSaveInstanceState(savedInstanceState);
+    }
+    public void onRestoreInstanceState(Bundle savedInstanceState) {
+        super.onRestoreInstanceState(savedInstanceState);
+        savedState = savedInstanceState.getDouble(savedStateKey);
+    }
+    @Override
+    public void onPause() {
+        l.warning("paused at: "+et);
+        super.onPause();  // Always call the superclass method first
+    }
+    @Override
+    public void onResume() {
+        l.warning("resumed at: "+et);
+        super.onResume();  // Always call the superclass method first
+    }
+    @Override
+    protected void onStart() {
+        super.onStart();
+        l.warning("start at: "+et);
+    }
+    @Override
+    protected void onRestart() {
+        super.onRestart();
+        l.warning("restart at: "+et);
+    }
+    @Override
+    protected void onStop() {
+        super.onStop();
+        l.warning("stopped at: "+et);
+        // what should we do here?
+    }
+    @Override
     protected void onDestroy() {
-        p("in on destry() &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&");
+        l.severe("destroyed at: "+et);
         if(runner!=null)
             runner.thread.interrupt();
         if(runner.gui.tablet!=null)
@@ -116,11 +161,14 @@ public class MainActivity extends Activity implements View.OnClickListener {
         super.onDestroy();
         //System.runFinalizersOnExit(true);
         //System.exit(0);
-    }    @Override
+    }
+    @Override
     public void onClick(final View v) {
         runner.gui.onClick(v);
     }
     static final Et et=new Et();
     Runner runner;
     final NetworkStuff networkStuff=new NetworkStuff(this);
+    final String savedStateKey="et";
+    Double savedState;
 }

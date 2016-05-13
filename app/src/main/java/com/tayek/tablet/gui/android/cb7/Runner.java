@@ -1,6 +1,7 @@
 package com.tayek.tablet.gui.android.cb7;
 import android.content.*;
 import android.content.pm.*;
+import android.net.wifi.*;
 import android.provider.*;
 import android.util.*;
 import android.view.*;
@@ -90,7 +91,6 @@ class Runner extends RunnerABC {
                     InetAddress inetAddress=mainActivity.networkStuff.getIpAddressFromWifiManager();
                 }
             },"get ipaddress from wifi mabager").start();
-
         }
         mainActivity.runOnUiThread(new Runnable() {
             @Override
@@ -100,5 +100,6 @@ class Runner extends RunnerABC {
                 gui.singleStatus.setBackgroundColor(Colors.aColor(isNetworkInterfaceUp&&isRouterOk?Colors.green:Colors.red));
             }
         });
+        mainActivity.networkStuff.checkWifi();
     }
 }
