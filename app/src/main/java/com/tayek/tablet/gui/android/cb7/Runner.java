@@ -82,6 +82,7 @@ class Runner extends RunnerABC {
     }
     @Override
     protected void loop(int n) {
+        p("start runner loop.");
         super.loop(n);
         p("group: "+group);
         if(!isNetworkInterfaceUp) {
@@ -90,7 +91,7 @@ class Runner extends RunnerABC {
                 public void run() {
                     mainActivity.networkStuff.checkWifi();
                 }
-            },"chwckwifi").start();
+            },"checkwifi").start();
         }
         mainActivity.runOnUiThread(new Runnable() {
             @Override
@@ -100,5 +101,6 @@ class Runner extends RunnerABC {
                 gui.singleStatus.setBackgroundColor(Colors.aColor(isNetworkInterfaceUp&&isRouterOk?Colors.green:Colors.red));
             }
         });
+        p("end runner loop.");
     }
 }

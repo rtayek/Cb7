@@ -57,9 +57,9 @@ public class MainActivity extends Activity implements View.OnClickListener {
             networkStuff.setupToast();
             Logger global=Logger.getLogger(Logger.GLOBAL_LOGGER_NAME);
             LoggingHandler.init();
-            LoggingHandler.setLevel(Level.WARNING);
+            LoggingHandler.setLevel(Level.INFO);
             p("here:");
-            LoggingHandler.toggleSockethandlers(); // looks like i need to wait for this?
+            //LoggingHandler.toggleSockethandlers(); // looks like i need to wait for this?
             // yes, whould wait until wifi is up
             Map<String,Required> requireds=new TreeMap<>(new Group.Groups().groups.get("g0"));
             Group group=new Group("1",requireds,MessageReceiver.Model.mark1);
@@ -146,12 +146,13 @@ public class MainActivity extends Activity implements View.OnClickListener {
     @Override
     protected void onDestroy() {
         l.severe("destroyed at: "+et);
+        LoggingHandler.stopSocketHandlers();
         if(runner!=null)
             runner.thread.interrupt();
         if(runner.gui.tablet!=null)
             ((Group.TabletImpl2)runner.gui.tablet).stopServer();
         else
-            System.out.println("tablet is null in on destroy!");
+            l.severe("tablet is null in on destroy!");
         super.onDestroy();
         //System.runFinalizersOnExit(true);
         //System.exit(0);
