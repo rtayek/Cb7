@@ -61,12 +61,22 @@ public class MainActivity extends Activity implements View.OnClickListener {
             //LoggingHandler.toggleSockethandlers(); // looks like i need to wait for this?
             // yes, whould wait until wifi is up
             //Settings.Global.putInt(getContentResolver(), Settings.Global.CAPTIVE_PORTAL_DETECTION_ENABLED, 0);
+            Integer result=null;
             try {
-                Object x=Settings.Global.getInt(getContentResolver(),"captive_portal_detection_enabled");
-                p("x="+x);
+                String captivePortalDetectionEnabled="captive_portal_detection_enabled";
+                result=Settings.Global.getInt(getContentResolver(),captivePortalDetectionEnabled);
+                p("captivePortalDetectionEnabled="+result);
             } catch(Exception e) {
                 p("caught: "+e);
+            }
+            if(result==null||result!=0) {
                 p("do an: adb shell settings put global captive_portal_detection_enabled 0 ");
+                try {
+                    Settings.Global.putInt(getContentResolver(),"captive_portal_detection_enabled",0);
+                    p("set capture succeeded.");
+                } catch(Exception e) {
+                    p("caught: "+e);
+                }
             }
             Map<String,Required> requireds=new TreeMap<>(new Group.Groups().groups.get("g0"));
             Group group=new Group("1",requireds,MessageReceiver.Model.mark1);
@@ -122,7 +132,7 @@ public class MainActivity extends Activity implements View.OnClickListener {
     }
     public void onRestoreInstanceState(Bundle savedInstanceState) {
         super.onRestoreInstanceState(savedInstanceState);
-        savedState = savedInstanceState.getDouble(savedStateKey);
+        savedState=savedInstanceState.getDouble(savedStateKey);
     }
     @Override
     public void onPause() {

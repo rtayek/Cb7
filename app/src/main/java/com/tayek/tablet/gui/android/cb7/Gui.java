@@ -194,12 +194,16 @@ class Gui implements Observer, View.OnClickListener, Tablet.HasATablet {
             public void processClick(int index) {
                 int id=index+1;
                 if(tablet!=null)
-                    if(1<=id&&id<=model.buttons)
+                    if(1<=id&&id<=model.buttons) {
+                        p("model button, passing click to tablet.");
                         tablet.click(index+1);
+                    }
                     else { // some other button
+                        p("not a model button.");
                         Histories histories=histories(index);
                         Toast.makeText(mainActivity,""+histories,Toast.LENGTH_LONG).show();
                     }
+                else p("tablet is null in gui adapter.");
             }
             @Override
             public void setButtonText(final int id,final String string) {
@@ -251,6 +255,7 @@ class Gui implements Observer, View.OnClickListener, Tablet.HasATablet {
             Integer id=index+1;
             p("id: "+id);
             if(1<=id&&id<=model.buttons) {
+                p("it's a model button.");
                 if(guiAdapterABC!=null)
                     guiAdapterABC.processClick(index);
                 else

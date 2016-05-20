@@ -53,6 +53,8 @@ class Runner extends RunnerABC {
             }
         });
         p("prefs: "+prefs);
+        //Exec.exec("settings put global captive_portal_detection_enabled 0 ");
+        loopSleep=10_000;
     }
     @Override
     public void init(MessageReceiver.Model model) {
