@@ -57,10 +57,17 @@ public class MainActivity extends Activity implements View.OnClickListener {
             networkStuff.setupToast();
             Logger global=Logger.getLogger(Logger.GLOBAL_LOGGER_NAME);
             LoggingHandler.init();
-            LoggingHandler.setLevel(Level.INFO);
-            p("here:");
+            LoggingHandler.setLevel(Level.WARNING);
             //LoggingHandler.toggleSockethandlers(); // looks like i need to wait for this?
             // yes, whould wait until wifi is up
+            //Settings.Global.putInt(getContentResolver(), Settings.Global.CAPTIVE_PORTAL_DETECTION_ENABLED, 0);
+            try {
+                Object x=Settings.Global.getInt(getContentResolver(),"captive_portal_detection_enabled");
+                p("x="+x);
+            } catch(Exception e) {
+                p("caught: "+e);
+                p("do an: adb shell settings put global captive_portal_detection_enabled 0 ");
+            }
             Map<String,Required> requireds=new TreeMap<>(new Group.Groups().groups.get("g0"));
             Group group=new Group("1",requireds,MessageReceiver.Model.mark1);
             p("starting runner at: "+et);

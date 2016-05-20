@@ -84,7 +84,6 @@ class Runner extends RunnerABC {
     protected void loop(int n) {
         p("start runner loop.");
         super.loop(n);
-        p("group: "+group);
         if(!isNetworkInterfaceUp) {
             new Thread(new Runnable() {
                 @Override

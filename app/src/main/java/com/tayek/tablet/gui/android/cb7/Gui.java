@@ -69,7 +69,7 @@ class Gui implements Observer, View.OnClickListener, Tablet.HasATablet {
         Button button;
         RelativeLayout.LayoutParams params;
         button=new Button(mainActivity);
-        button.setId(rows*columns+i); // id is index!
+        button.setId(model.buttons+i); // id is index!
         button.setTextSize(fontsize/4);
         button.setGravity(Gravity.CENTER);
         params=new RelativeLayout.LayoutParams(width,depth);
@@ -247,18 +247,22 @@ class Gui implements Observer, View.OnClickListener, Tablet.HasATablet {
         if(v instanceof Button) {
             Button button=(Button)v;
             Integer index=button.getId();
+            p("index: "+index);
             Integer id=index+1;
+            p("id: "+id);
             if(1<=id&&id<=model.buttons) {
                 if(guiAdapterABC!=null)
                     guiAdapterABC.processClick(index);
                 else
                     p("guiAdapterABC is null!");
             } else {
-                p("index: "+index);
+                p("map:"+indexToTabletId);
                 Integer key=index-model.buttons;
+                p("key: "+key);
                 String tabletId=indexToTabletId.get(key);
                 if(tabletId!=null) {
                     Histories histories=group.required(tabletId).histories();
+                    p("got histories for: "+tabletId);
                     // p("histories for: "+tabletId+": "+histories);
                     Toast.makeText(mainActivity,"histories for: "+tabletId+": "+histories,Toast.LENGTH_LONG).show();
                 } else
@@ -271,13 +275,14 @@ class Gui implements Observer, View.OnClickListener, Tablet.HasATablet {
         lastClick=et.etms();
         if(tablet!=null) {
             Iterator<String> s=group.keys().iterator();
-            p("tablets: "+group.keys());
             for(int i=0;i<group.keys().size();i++) {
                 Histories histories=group.required(s.next()).histories();
-                p("histories: "+histories);
+                if(false)
+                    p("histories: "+histories.toString("after click"));
                 double recentFaulureRate=histories.senderHistory.history.recentFailureRate();
                 int color=histories.senderHistory.history.attempts()==0?colors.aColor(Colors.yellow):colors.aColor(colors.smooth(recentFaulureRate));
-                p("recent failure rate: "+recentFaulureRate+", color: "+Colors.toString(color));
+                if(false)
+                    p("recent failure rate: "+recentFaulureRate+", color: "+Colors.toString(color));
                 status[i].setBackgroundColor(color);
             }
         } else
@@ -307,11 +312,7 @@ class Gui implements Observer, View.OnClickListener, Tablet.HasATablet {
                         Enums.MenuItem.doItem(id,tablet);
                     return true;
                 }
-            else if(id==Enums.MenuItem.values().length) { // some hack for restarting tablet?
-                Intent i=mainActivity.getBaseContext().getPackageManager().getLaunchIntentForPackage(mainActivity.getBaseContext().getPackageName());
-                i.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
-                mainActivity.startActivity(i);
-            } else if(Enums.LevelSubMenuItem.isItem(id-Enums.MenuItem.values().length)) {
+            else if(Enums.LevelSubMenuItem.isItem(id-Enums.MenuItem.values().length)) {
                 Enums.LevelSubMenuItem.doItem(id-Enums.MenuItem.values().length); // hack!
                 return true;
             } else
@@ -320,6 +321,14 @@ class Gui implements Observer, View.OnClickListener, Tablet.HasATablet {
             l.severe("menut item: "+item+", caught: "+e);
         }
         return false;
+        /*
+        else if(id==Enums.MenuItem.values().length) { // some hack for restarting tablet?
+            // wtf was i doing here?
+            Intent i=mainActivity.getBaseContext().getPackageManager().getLaunchIntentForPackage(mainActivity.getBaseContext().getPackageName());
+            i.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+            mainActivity.startActivity(i);
+        }
+        */
     }
     final MainActivity mainActivity;
     final Et et;
