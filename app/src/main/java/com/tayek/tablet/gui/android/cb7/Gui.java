@@ -1,6 +1,7 @@
 package com.tayek.tablet.gui.android.cb7;
 import android.app.*;
 import android.content.*;
+import android.media.*;
 import android.util.*;
 import android.view.*;
 import android.widget.*;
@@ -14,8 +15,7 @@ import com.tayek.utilities.*;
 import java.util.*;
 import java.util.concurrent.*;
 
-import static com.tayek.io.IO.l;
-import static com.tayek.io.IO.p;
+import static com.tayek.io.IO.*;
 class Gui implements Observer, View.OnClickListener, Tablet.HasATablet {
     Gui(MainActivity mainActivity,Group group,MessageReceiver.Model model) {
         this.mainActivity=mainActivity;
@@ -23,6 +23,7 @@ class Gui implements Observer, View.OnClickListener, Tablet.HasATablet {
         this.group=group;
         this.model=model;
         colors=model.colors;
+        areWeQuitting=false;
     }
     @Override
     public void update(Observable o,Object hint) {
@@ -195,13 +196,14 @@ class Gui implements Observer, View.OnClickListener, Tablet.HasATablet {
                 int id=index+1;
                 if(tablet!=null)
                     if(1<=id&&id<=model.buttons) {
-                        p("model button, passing click to tablet.");
+                        p("model button, passing click to tablet: "+model);
+                        p("models: "+model+", "+tablet.model()+", "+(model.equals(tablet.model())));
                         tablet.click(index+1);
                     }
                     else { // some other button
                         p("not a model button.");
-                        Histories histories=histories(index);
-                        Toast.makeText(mainActivity,""+histories,Toast.LENGTH_LONG).show();
+                        //Histories histories=histories(index); // removed old, use new if anything
+                        //Toast.makeText(mainActivity,""+histories,Toast.LENGTH_LONG).show();
                     }
                 else p("tablet is null in gui adapter.");
             }
@@ -233,19 +235,6 @@ class Gui implements Observer, View.OnClickListener, Tablet.HasATablet {
         wifiStatus.setVisibility(visibility);
         routerStatus.setVisibility(visibility);
     }
-    Histories histories(int index) {
-        Histories histories=null;
-        if(tablet!=null) {
-            int tabletIndex=index-tablet.model().colors.rows*tablet.model().colors.columns;
-            if(0<=tabletIndex&&tabletIndex<group.keys().size()) {
-                String tabletId=IO.aTabletId(tabletIndex+1);
-                histories=group.required(tabletId).histories();
-            } else {
-                l.severe(index+" is bad index!");
-            }
-        }
-        return histories;
-    }
     public void onClick(final View v) {
         p("click &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&");
         if(v instanceof Button) {
@@ -269,6 +258,12 @@ class Gui implements Observer, View.OnClickListener, Tablet.HasATablet {
                     Histories histories=group.required(tabletId).histories();
                     p("got histories for: "+tabletId);
                     // p("histories for: "+tabletId+": "+histories);
+                    if(tablet!=null&&tablet.tabletId().equals(tabletId)) {
+                        p("this is our history");
+                        if(histories.receiverHistory.history.attempts()==0)
+                            l.severe("lost receiver history!");
+                        else l.info("we have receiver history.");
+                    }
                     Toast.makeText(mainActivity,"histories for: "+tabletId+": "+histories,Toast.LENGTH_LONG).show();
                 } else
                     p("no entry for key: "+key+" in: "+indexToTabletId);
@@ -299,17 +294,9 @@ class Gui implements Observer, View.OnClickListener, Tablet.HasATablet {
             int id=item.getItemId();
             if(Enums.MenuItem.isItem(id))
                 if(Enums.MenuItem.item(id).equals(Enums.MenuItem.Quit)) {
-                    //alert("Quitting",false);
-                    tablet.stopServer();
-                    mainActivity.runner.thread.interrupt();
-                    mainActivity.finish();
-                    l.severe("after finish! &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&");
-                    try {
-                        Thread.sleep(5_000);
-                    } catch(InterruptedException e) {
-                        l.info("caught: "+e);
-                    }
-                    //System.exit(0);
+                    pl("quitting.");
+                    //mainActivity.stopTabletStuff();
+                    areWeQuitting=true;
                 } else {
                     if(Enums.MenuItem.values()[id].equals(Enums.MenuItem.toggleExtraStatus))
                         setStatusVisibility(status[0].getVisibility()==View.VISIBLE?View.INVISIBLE:View.VISIBLE);
@@ -321,7 +308,7 @@ class Gui implements Observer, View.OnClickListener, Tablet.HasATablet {
                 Enums.LevelSubMenuItem.doItem(id-Enums.MenuItem.values().length); // hack!
                 return true;
             } else
-                l.severe(item+" is not atablet men item!");
+                l.severe(item+" is not a tablet meun item!");
         } catch(Exception e) {
             l.severe("menut item: "+item+", caught: "+e);
         }
@@ -335,11 +322,40 @@ class Gui implements Observer, View.OnClickListener, Tablet.HasATablet {
         }
         */
     }
+    void setupAudio() {
+        ((Audio.Factory.FactoryImpl.AndroidAudio)Audio.audio).setCallback(new IO.Callback<Audio.Sound>() {
+            @Override
+            public void call(Audio.Sound sound) {
+                Integer id=id(sound);
+                l.info("playing sound: "+sound+", id: "+id);
+                if(id!=null) {
+                    mediaPlayer=MediaPlayer.create(mainActivity,id);
+                    mediaPlayer.start();
+                } else
+                    l.warning("id for sound: "+sound+" is null!");
+            }
+            Integer id(Audio.Sound sound) {
+                switch(sound) {
+                    case electronic_chime_kevangc_495939803:
+                        return R.raw.electronic_chime_kevangc_495939803;
+                    case glass_ping_go445_1207030150:
+                        return R.raw.glass_ping_go445_1207030150;
+                    case store_door_chime_mike_koenig_570742973:
+                        return R.raw.store_door_chime_mike_koenig_570742973;
+                    default:
+                        l.warning(""+" "+"default where!");
+                        return null;
+                }
+            }
+        });
+    }
     final MainActivity mainActivity;
     final Et et;
     final Group group;
     final MessageReceiver.Model model;
     final Colors colors;
+    volatile Boolean areWeQuitting;
+    MediaPlayer mediaPlayer;
     TextView bottom; // was used for messages, put it back
     Button[] buttons, status, test;
     Button lineStatus, wifiStatus, routerStatus, singleStatus;

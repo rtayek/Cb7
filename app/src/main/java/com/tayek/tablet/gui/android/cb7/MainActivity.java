@@ -23,6 +23,7 @@ import com.tayek.utilities.*;
 
 import static java.lang.Math.round;
 
+import java.io.*;
 import java.lang.*;
 import java.lang.System;
 import java.math.*;
@@ -31,6 +32,7 @@ import java.nio.*;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.logging.*;
+import java.util.logging.Handler;
 //https://plus.google.com/103583939320326217147/posts/BQ5iYJEaaEH driver for usb
 //http://davidrs.com/wp/fix-android-device-not-showing-up-on-windows-8/
 //http://stackoverflow.com/questions/8818290/how-to-connect-to-a-specific-wifi-network-in-android-programmatically
@@ -49,15 +51,52 @@ public class MainActivity extends Activity implements View.OnClickListener {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         try {
-            p("onCreate at: "+et);
+            p("onCreate at: "+et+", process id: "+android.os.Process.myPid());
             super.onCreate(savedInstanceState);
             l.info("android id: "+Settings.Secure.getString(getContentResolver(),Settings.Secure.ANDROID_ID));
             setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
             setContentView(R.layout.activity_main);
+            getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
             networkStuff.setupToast();
+            String filename="tablet.log";
+            File logFile = new File(getFilesDir(), filename);
+            logFile=new File(Environment.getDataDirectory(),filename);
+            p("log file: "+logFile);
+            try {
+                OutputStream outputStream = new FileOutputStream(logFile);
+                outputStream.write("foo\n".getBytes());
+                outputStream.close();
+                p("wrote to log file: ");
+            } catch (Exception e) {
+                l.severe("write to log file caught: "+e);
+                //e.printStackTrace();
+            }
+            try {
+                InputStream inputStream = new FileInputStream(logFile);
+                BufferedReader bufferedReader=new BufferedReader(new InputStreamReader(inputStream));
+                String string=bufferedReader.readLine();
+                inputStream.close();
+                p("read from log file: "+string);
+            } catch (Exception e) {
+                l.severe("read from log file caught: "+e);
+                //e.printStackTrace();
+            }
+            if(LoggingHandler.areAnySockethandlersOn()) {
+                l.severe("we already have sockethandlers!");
+                LoggingHandler.printSocketHandlers();
+            }
             Logger global=Logger.getLogger(Logger.GLOBAL_LOGGER_NAME);
             LoggingHandler.init();
             LoggingHandler.setLevel(Level.WARNING);
+            try {
+                p("log file get name: "+logFile.getPath());
+                Handler handler=new FileHandler(logFile.getPath());
+                handler.setLevel(Level.ALL);
+                l.addHandler(handler);
+                l.warning("added file handler: "+handler);
+            } catch(Exception e) {
+                l.warning("file handler caught: "+e);
+            }
             //LoggingHandler.toggleSockethandlers(); // looks like i need to wait for this?
             // yes, whould wait until wifi is up
             //Settings.Global.putInt(getContentResolver(), Settings.Global.CAPTIVE_PORTAL_DETECTION_ENABLED, 0);
@@ -121,9 +160,24 @@ public class MainActivity extends Activity implements View.OnClickListener {
     }
     */
     @Override
+    public void onOptionsMenuClosed(Menu menu) {
+        pl("in options menu closed");
+        super.onOptionsMenuClosed(menu);
+        pl("after super on options menu closed");
+    }
+
+    @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         boolean rc=runner.gui.menuItem(item);
-        return super.onOptionsItemSelected(item);
+        if(!rc) {
+            pl("calling super on otions item selected");
+            rc=super.onOptionsItemSelected(item);
+        }
+        if(runner.gui.areWeQuitting) {
+            pl("calling finish from on options item selected.");
+            finish();
+        }
+        return rc;
     }
     @Override
     public void onSaveInstanceState(Bundle savedInstanceState) {
@@ -136,40 +190,53 @@ public class MainActivity extends Activity implements View.OnClickListener {
     }
     @Override
     public void onPause() {
-        l.warning("paused at: "+et);
+       pl("paused at: "+et);
         super.onPause();  // Always call the superclass method first
     }
     @Override
     public void onResume() {
-        l.warning("resumed at: "+et);
+        pl("resumed at: "+et);
         super.onResume();  // Always call the superclass method first
     }
     @Override
     protected void onStart() {
         super.onStart();
-        l.warning("start at: "+et);
+        pl("start at: "+et);
     }
     @Override
     protected void onRestart() {
         super.onRestart();
-        l.warning("restart at: "+et);
+        pl("restart at: "+et);
+    }
+    void stopTabletStuff() {
+        if(LoggingHandler.areAnySockethandlersOn()) {
+            pl("stopping socket handers.");
+            LoggingHandler.stopSocketHandlers();
+        }
+        if(runner!=null) {
+            runner.isShuttingDown=true;
+            pl("interrupting runner thread: "+runner);
+            runner.thread.interrupt();
+        }
+        if(runner.gui.tablet!=null) {
+            pl("stopping server.");
+            ((Group.TabletImpl2)runner.gui.tablet).stopServer();
+        }
+        else
+            l.severe("tablet is null in on stop!");
+
     }
     @Override
     protected void onStop() {
         super.onStop();
-        l.warning("stopped at: "+et);
-        // what should we do here?
+        pl("stopped at: "+et);
+        //stopTabletStuff(); // don't do this, android will resume this
     }
     @Override
     protected void onDestroy() {
-        l.severe("destroyed at: "+et);
-        LoggingHandler.stopSocketHandlers();
-        if(runner!=null)
-            runner.thread.interrupt();
-        if(runner.gui.tablet!=null)
-            ((Group.TabletImpl2)runner.gui.tablet).stopServer();
-        else
-            l.severe("tablet is null in on destroy!");
+        pl("destroyed at: "+et);
+        closeOptionsMenu();
+        stopTabletStuff();
         super.onDestroy();
         //System.runFinalizersOnExit(true);
         //System.exit(0);

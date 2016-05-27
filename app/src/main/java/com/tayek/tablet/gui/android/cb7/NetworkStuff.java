@@ -135,33 +135,6 @@ public class NetworkStuff {
         }
         return inetAddress;
     }
-    void setupAudioPlayer() {
-        ((Audio.Factory.FactoryImpl.AndroidAudio)Audio.audio).setCallback(new IO.Callback<Audio.Sound>() {
-            @Override
-            public void call(Audio.Sound sound) {
-                Integer id=id(sound);
-                l.info("playing sound: "+sound+", id: "+id);
-                if(id!=null) {
-                    MediaPlayer mediaPlayer=MediaPlayer.create(mainActivity,id);
-                    mediaPlayer.start();
-                } else
-                    l.warning("id for sound: "+sound+" is null!");
-            }
-            Integer id(Audio.Sound sound) {
-                switch(sound) {
-                    case electronic_chime_kevangc_495939803:
-                        return R.raw.electronic_chime_kevangc_495939803;
-                    case glass_ping_go445_1207030150:
-                        return R.raw.glass_ping_go445_1207030150;
-                    case store_door_chime_mike_koenig_570742973:
-                        return R.raw.store_door_chime_mike_koenig_570742973;
-                    default:
-                        l.warning(""+" "+"default where!");
-                        return null;
-                }
-            }
-        });
-    }
     void setupToast() {
         ((Toaster.Android_)Toaster.toaster).setCallback(new IO.Callback<String>() {
             @Override

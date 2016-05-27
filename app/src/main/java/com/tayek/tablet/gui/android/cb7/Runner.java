@@ -1,23 +1,15 @@
 package com.tayek.tablet.gui.android.cb7;
 import android.content.*;
-import android.content.pm.*;
-import android.net.wifi.*;
-import android.provider.*;
-import android.util.*;
 import android.view.*;
 import android.widget.*;
 
-import com.tayek.*;
 import com.tayek.io.*;
 import com.tayek.tablet.*;
 import com.tayek.tablet.io.*;
 import com.tayek.io.Prefs.Factory.FactoryImpl.AndroidPrefs;
 import com.tayek.utilities.*;
 
-import java.io.*;
-import java.net.*;
 import java.util.*;
-import java.util.logging.*;
 
 import static com.tayek.io.IO.*;
 class Runner extends RunnerABC {
@@ -28,6 +20,7 @@ class Runner extends RunnerABC {
     Runner(final Group group,final MainActivity mainActivity) {
         super(group,tabletRouter,tabletRouterPrefix);
         // group, model, colors, audio observer are all set up now.
+        pl("construct runner: "+this+" &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&");
         this.mainActivity=mainActivity;
         gui=new Gui(mainActivity,group,model);
         String key="com.tayek.tablet.sharedPreferencesKey";
@@ -55,10 +48,13 @@ class Runner extends RunnerABC {
         p("prefs: "+prefs);
         //Exec.exec("settings put global captive_portal_detection_enabled 0 ");
         loopSleep=10_000;
+        //prefs.clear();
+        // try clearing the prefs to see if it fixed the problem
+        // that conrad found on sunday.
     }
     @Override
     public void init(MessageReceiver.Model model) {
-        mainActivity.networkStuff.setupAudioPlayer();
+        gui.setupAudio();
         Audio.audio.play(Audio.Sound.glass_ping_go445_1207030150);
     }
     @Override
