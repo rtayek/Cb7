@@ -59,28 +59,6 @@ public class MainActivity extends Activity implements View.OnClickListener {
             getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
             networkStuff.setupToast();
             String filename="tablet.log";
-            File logFile = new File(getFilesDir(), filename);
-            logFile=new File(Environment.getDataDirectory(),filename);
-            p("log file: "+logFile);
-            try {
-                OutputStream outputStream = new FileOutputStream(logFile);
-                outputStream.write("foo\n".getBytes());
-                outputStream.close();
-                p("wrote to log file: ");
-            } catch (Exception e) {
-                l.severe("write to log file caught: "+e);
-                //e.printStackTrace();
-            }
-            try {
-                InputStream inputStream = new FileInputStream(logFile);
-                BufferedReader bufferedReader=new BufferedReader(new InputStreamReader(inputStream));
-                String string=bufferedReader.readLine();
-                inputStream.close();
-                p("read from log file: "+string);
-            } catch (Exception e) {
-                l.severe("read from log file caught: "+e);
-                //e.printStackTrace();
-            }
             if(LoggingHandler.areAnySockethandlersOn()) {
                 l.severe("we already have sockethandlers!");
                 LoggingHandler.printSocketHandlers();
@@ -89,8 +67,11 @@ public class MainActivity extends Activity implements View.OnClickListener {
             LoggingHandler.init();
             LoggingHandler.setLevel(Level.WARNING);
             try {
-                p("log file get name: "+logFile.getPath());
-                Handler handler=new FileHandler(logFile.getPath());
+                String pattern="tablet%u.%g.log";
+                File logFile=new File(getFilesDir(),pattern);
+                p("log file get path: "+logFile.getPath());
+                Handler handler=new FileHandler(logFile.getPath(),10_000_000,10,true);
+                // String pattern,int limit,int count,boolean append)
                 handler.setLevel(Level.ALL);
                 l.addHandler(handler);
                 l.warning("added file handler: "+handler);
