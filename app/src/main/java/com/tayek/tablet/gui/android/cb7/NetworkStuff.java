@@ -65,7 +65,7 @@ public class NetworkStuff {
                             p("current connection is: "+tabletWifiSsid);
                             break;
                         case WifiConfiguration.Status.DISABLED:
-                            p(wifiConfiguration.SSID+" is disables, try to enable");
+                            p(wifiConfiguration.SSID+" is disabled, try to enable");
                             p(wifiConfiguration.SSID+" disconnecting first.");
                             boolean ok=wifiManager.disconnect();
                             if(ok) {

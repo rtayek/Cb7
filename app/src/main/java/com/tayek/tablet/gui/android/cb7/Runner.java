@@ -20,7 +20,6 @@ class Runner extends RunnerABC {
     Runner(final Group group,final MainActivity mainActivity) {
         super(group,tabletRouter,tabletRouterPrefix);
         // group, model, colors, audio observer are all set up now.
-        pl("construct runner: "+this+" &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&");
         this.mainActivity=mainActivity;
         gui=new Gui(mainActivity,group,model);
         String key="com.tayek.tablet.sharedPreferencesKey";
@@ -80,7 +79,7 @@ class Runner extends RunnerABC {
     }
     @Override
     protected void loop(int n) {
-        p("start runner loop.");
+        p("start runner loop "+mainActivity);
         super.loop(n);
         if(!isNetworkInterfaceUp) {
             new Thread(new Runnable() {
@@ -93,11 +92,12 @@ class Runner extends RunnerABC {
         mainActivity.runOnUiThread(new Runnable() {
             @Override
             public void run() {
+                gui.serverStatus.setBackgroundColor(Colors.aColor(tablet!=null&&((Group.TabletImpl2)tablet).server!=null?Colors.green:Colors.red));
                 gui.wifiStatus.setBackgroundColor(Colors.aColor(isNetworkInterfaceUp?Colors.green:Colors.red));
                 gui.routerStatus.setBackgroundColor(Colors.aColor(isRouterOk?Colors.green:Colors.red));
                 gui.singleStatus.setBackgroundColor(Colors.aColor(isNetworkInterfaceUp&&isRouterOk?Colors.green:Colors.red));
             }
         });
-        p("end runner loop.");
+        p("end runner loop "+mainActivity);
     }
 }

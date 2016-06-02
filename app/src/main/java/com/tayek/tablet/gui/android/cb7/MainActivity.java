@@ -50,8 +50,15 @@ public class MainActivity extends Activity implements View.OnClickListener {
     }
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        pl("onCreate at: "+et+", process id: "+android.os.Process.myPid()+", "+this);
+        if(false&&instances>1)
+            try {
+                pl("more than one instance!- sleeping");
+                Thread.sleep(1_000);
+            } catch(InterruptedException e) {
+                pl("sleep for more than one instance was interrupted!");
+            }
         try {
-            p("onCreate at: "+et+", process id: "+android.os.Process.myPid());
             super.onCreate(savedInstanceState);
             l.info("android id: "+Settings.Secure.getString(getContentResolver(),Settings.Secure.ANDROID_ID));
             setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
@@ -66,18 +73,8 @@ public class MainActivity extends Activity implements View.OnClickListener {
             Logger global=Logger.getLogger(Logger.GLOBAL_LOGGER_NAME);
             LoggingHandler.init();
             LoggingHandler.setLevel(Level.WARNING);
-            try {
-                String pattern="tablet%u.%g.log";
-                File logFile=new File(getFilesDir(),pattern);
-                p("log file get path: "+logFile.getPath());
-                Handler handler=new FileHandler(logFile.getPath(),10_000_000,10,true);
-                // String pattern,int limit,int count,boolean append)
-                handler.setLevel(Level.ALL);
-                l.addHandler(handler);
-                l.warning("added file handler: "+handler);
-            } catch(Exception e) {
-                l.warning("file handler caught: "+e);
-            }
+            File logFileDirectory=getFilesDir();
+            LoggingHandler.addFileHandler(l,logFileDirectory);
             //LoggingHandler.toggleSockethandlers(); // looks like i need to wait for this?
             // yes, whould wait until wifi is up
             //Settings.Global.putInt(getContentResolver(), Settings.Global.CAPTIVE_PORTAL_DETECTION_ENABLED, 0);
@@ -90,19 +87,20 @@ public class MainActivity extends Activity implements View.OnClickListener {
                 p("caught: "+e);
             }
             if(result==null||result!=0) {
-                p("do an: adb shell settings put global captive_portal_detection_enabled 0 ");
+                p("trying to do a: Settings.Global.putInt(getContentResolver(),\"captive_portal_detection_enabled\",0)");
                 try {
                     Settings.Global.putInt(getContentResolver(),"captive_portal_detection_enabled",0);
                     p("set capture succeeded.");
                 } catch(Exception e) {
                     p("caught: "+e);
+                    p("do an: adb shell settings put global captive_portal_detection_enabled 0");
                 }
             }
             Map<String,Required> requireds=new TreeMap<>(new Group.Groups().groups.get("g0"));
             Group group=new Group("1",requireds,MessageReceiver.Model.mark1);
             p("starting runner at: "+et);
             p("requireds: "+requireds);
-            new Thread(runner=new Runner(group,this),"tablet runner").start();
+            new Thread(runner=new Runner(group,this),"started runner").start();
             p("exit onCreate at: "+et);
         } catch(Exception e) {
             e.printStackTrace();
@@ -146,7 +144,6 @@ public class MainActivity extends Activity implements View.OnClickListener {
         super.onOptionsMenuClosed(menu);
         pl("after super on options menu closed");
     }
-
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         boolean rc=runner.gui.menuItem(item);
@@ -171,7 +168,7 @@ public class MainActivity extends Activity implements View.OnClickListener {
     }
     @Override
     public void onPause() {
-       pl("paused at: "+et);
+        pl("paused at: "+et);
         super.onPause();  // Always call the superclass method first
     }
     @Override
@@ -190,28 +187,31 @@ public class MainActivity extends Activity implements View.OnClickListener {
         pl("restart at: "+et);
     }
     void stopTabletStuff() {
+        pl("in stop tablet stuff.");
+        if(runner.tablet!=null) { // do this first, before interrupting the runner as he will set tablet to null!
+            pl("stopping server.");
+            ((Group.TabletImpl2)runner.gui.tablet).stopServer();
+        } else
+            l.severe("tablet is null in on stop!");
         if(LoggingHandler.areAnySockethandlersOn()) {
             pl("stopping socket handers.");
             LoggingHandler.stopSocketHandlers();
         }
         if(runner!=null) {
+            pl("setting shutdown to true in: "+runner);
             runner.isShuttingDown=true;
-            pl("interrupting runner thread: "+runner);
-            runner.thread.interrupt();
-        }
-        if(runner.gui.tablet!=null) {
-            pl("stopping server.");
-            ((Group.TabletImpl2)runner.gui.tablet).stopServer();
-        }
-        else
-            l.severe("tablet is null in on stop!");
-
+            pl("runner.isShuttingDown: "+runner.isShuttingDown);
+            if(false) { // let's try letting it exit the run method
+                pl("interrupting runner thread: "+runner);
+                runner.thread.interrupt();
+            }
+        } else
+            pl("runner is null!");
     }
     @Override
     protected void onStop() {
         super.onStop();
         pl("stopped at: "+et);
-        //stopTabletStuff(); // don't do this, android will resume this
     }
     @Override
     protected void onDestroy() {
@@ -223,6 +223,10 @@ public class MainActivity extends Activity implements View.OnClickListener {
         //System.exit(0);
     }
     @Override
+    public String toString() {
+        return "main activity #"+instances;
+    }
+    @Override
     public void onClick(final View v) {
         runner.gui.onClick(v);
     }
@@ -231,4 +235,8 @@ public class MainActivity extends Activity implements View.OnClickListener {
     final NetworkStuff networkStuff=new NetworkStuff(this);
     final String savedStateKey="et";
     Double savedState;
+    {
+        instances++;
+    }
+    static Integer instances=0;
 }

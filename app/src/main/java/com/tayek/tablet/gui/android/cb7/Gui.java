@@ -153,6 +153,9 @@ class Gui implements Observer, View.OnClickListener, Tablet.HasATablet {
         double yr=y0+(3-.5)*size*1.2;
         // set layout params?
         // this is done ny getButton()
+        serverStatus=getButton(size/3,"t",fontsize,rows,columns,i,(int)xr,(int)yr);
+        relativeLayout.addView(serverStatus);
+        xr+=1.2*size/3;
         wifiStatus=getButton(size/3,"w",fontsize,rows,columns,i,(int)xr,(int)yr);
         relativeLayout.addView(wifiStatus);
         xr+=1.2*size/3;
@@ -232,6 +235,7 @@ class Gui implements Observer, View.OnClickListener, Tablet.HasATablet {
         for(int i=0;i<group.keys().size();i++)
             status[i].setVisibility(visibility);
         lineStatus.setVisibility(visibility);
+        serverStatus.setVisibility(visibility);
         wifiStatus.setVisibility(visibility);
         routerStatus.setVisibility(visibility);
     }
@@ -358,7 +362,7 @@ class Gui implements Observer, View.OnClickListener, Tablet.HasATablet {
     MediaPlayer mediaPlayer;
     TextView bottom; // was used for messages, put it back
     Button[] buttons, status, test;
-    Button lineStatus, wifiStatus, routerStatus, singleStatus;
+    Button lineStatus, serverStatus, wifiStatus, routerStatus, singleStatus;
     Double lastClick=Double.NaN;
     ExecutorService executorService=Executors.newFixedThreadPool(10);
     GuiAdapter.GuiAdapterABC guiAdapterABC;
