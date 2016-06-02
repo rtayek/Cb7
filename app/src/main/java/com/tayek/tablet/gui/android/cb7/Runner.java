@@ -92,10 +92,11 @@ class Runner extends RunnerABC {
         mainActivity.runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                gui.serverStatus.setBackgroundColor(Colors.aColor(tablet!=null&&((Group.TabletImpl2)tablet).server!=null?Colors.green:Colors.red));
+                boolean isServerNull=tablet!=null&&((Group.TabletImpl2)tablet).server!=null
+                gui.serverStatus.setBackgroundColor(Colors.aColor(!isServerNull?Colors.green:Colors.red));
                 gui.wifiStatus.setBackgroundColor(Colors.aColor(isNetworkInterfaceUp?Colors.green:Colors.red));
                 gui.routerStatus.setBackgroundColor(Colors.aColor(isRouterOk?Colors.green:Colors.red));
-                gui.singleStatus.setBackgroundColor(Colors.aColor(isNetworkInterfaceUp&&isRouterOk?Colors.green:Colors.red));
+                gui.singleStatus.setBackgroundColor(Colors.aColor(!isServerNull&&isNetworkInterfaceUp&&isRouterOk?Colors.green:Colors.red));
             }
         });
         p("end runner loop "+mainActivity);
