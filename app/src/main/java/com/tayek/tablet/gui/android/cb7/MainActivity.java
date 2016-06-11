@@ -51,6 +51,8 @@ public class MainActivity extends Activity implements View.OnClickListener {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         pl("onCreate at: "+et+", process id: "+android.os.Process.myPid()+", "+this);
+        String androidId=Settings.Secure.getString(getContentResolver(),Settings.Secure.ANDROID_ID);
+        pl("android id: "+androidId);
         if(false&&instances>1)
             try {
                 pl("more than one instance!- sleeping");
@@ -60,21 +62,15 @@ public class MainActivity extends Activity implements View.OnClickListener {
             }
         try {
             super.onCreate(savedInstanceState);
-            l.info("android id: "+Settings.Secure.getString(getContentResolver(),Settings.Secure.ANDROID_ID));
-            setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
-            setContentView(R.layout.activity_main);
-            getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-            networkStuff.setupToast();
-            String filename="tablet.log";
-            if(LoggingHandler.areAnySockethandlersOn()) {
-                l.severe("we already have sockethandlers!");
-                LoggingHandler.printSocketHandlers();
+            if(true) {
+                requestWindowFeature(Window.FEATURE_NO_TITLE);
+                getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,WindowManager.LayoutParams.FLAG_FULLSCREEN);
             }
             Logger global=Logger.getLogger(Logger.GLOBAL_LOGGER_NAME);
             LoggingHandler.init();
             LoggingHandler.setLevel(Level.WARNING);
             File logFileDirectory=getFilesDir();
-            LoggingHandler.addFileHandler(l,logFileDirectory);
+            LoggingHandler.addFileHandler(l,logFileDirectory,androidId);
             //LoggingHandler.toggleSockethandlers(); // looks like i need to wait for this?
             // yes, whould wait until wifi is up
             //Settings.Global.putInt(getContentResolver(), Settings.Global.CAPTIVE_PORTAL_DETECTION_ENABLED, 0);
@@ -105,7 +101,6 @@ public class MainActivity extends Activity implements View.OnClickListener {
         } catch(Exception e) {
             e.printStackTrace();
             l.severe("on create caught: "+e);
-            //throw e;
         }
     }
     @Override

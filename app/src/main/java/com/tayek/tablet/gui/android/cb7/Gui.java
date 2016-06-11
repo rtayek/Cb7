@@ -1,6 +1,7 @@
 package com.tayek.tablet.gui.android.cb7;
 import android.app.*;
 import android.content.*;
+import android.graphics.*;
 import android.media.*;
 import android.util.*;
 import android.view.*;
@@ -91,6 +92,9 @@ class Gui implements Observer, View.OnClickListener, Tablet.HasATablet {
         final int size=metrics.widthPixels/8; // size of a large square button
         final float fontsize=size*.30f;
         System.out.println(size+" "+(metrics.widthPixels*1./7));
+        Point point = new Point();
+        mainActivity.getWindowManager().getDefaultDisplay().getRealSize(point);
+        p("real size is: "+point);
         //final int x0=size/4, y0=75;
         final int x0=size/4, y0=size/4;
         p("x0="+x0+", y0="+y0);
@@ -154,6 +158,7 @@ class Gui implements Observer, View.OnClickListener, Tablet.HasATablet {
         // set layout params?
         // this is done ny getButton()
         serverStatus=getButton(size/3,"t",fontsize,rows,columns,i,(int)xr,(int)yr);
+        // should make i unique, but not so important sice we normally ignore a click on status buttons.
         relativeLayout.addView(serverStatus);
         xr+=1.2*size/3;
         wifiStatus=getButton(size/3,"w",fontsize,rows,columns,i,(int)xr,(int)yr);
@@ -161,9 +166,16 @@ class Gui implements Observer, View.OnClickListener, Tablet.HasATablet {
         xr+=1.2*size/3;
         routerStatus=getButton(size/3,"r",fontsize,rows,columns,i,(int)xr,(int)yr);
         relativeLayout.addView(routerStatus);
-        xr=x0+(columns+1.2)*size;
+        xr+=1.2*size/3;
         singleStatus=getButton(size/3,"s",fontsize,rows,columns,i,(int)xr,(int)yr);
         relativeLayout.addView(singleStatus);
+        xr+=1.2*size/3;
+        xr=metrics.widthPixels-size/3+10;
+        yr=metrics.heightPixels-size/3+10-size;
+        hidden=getButton(size/3," ",fontsize,rows,columns,hiddenButonIndex-/*hack*/model.buttons,(int)xr,(int)yr);
+        hidden.setBackgroundColor(colors.background|0xff000000);
+        p("hidden button is at: "+xr+", "+yr);
+        relativeLayout.addView(hidden);
         if(false) {
             int testButtons=11;
             test=new Button[testButtons];
@@ -202,13 +214,13 @@ class Gui implements Observer, View.OnClickListener, Tablet.HasATablet {
                         p("model button, passing click to tablet: "+model);
                         p("models: "+model+", "+tablet.model()+", "+(model.equals(tablet.model())));
                         tablet.click(index+1);
-                    }
-                    else { // some other button
+                    } else { // some other button
                         p("not a model button.");
                         //Histories histories=histories(index); // removed old, use new if anything
                         //Toast.makeText(mainActivity,""+histories,Toast.LENGTH_LONG).show();
                     }
-                else p("tablet is null in gui adapter.");
+                else
+                    p("tablet is null in gui adapter.");
             }
             @Override
             public void setButtonText(final int id,final String string) {
@@ -240,7 +252,7 @@ class Gui implements Observer, View.OnClickListener, Tablet.HasATablet {
         routerStatus.setVisibility(visibility);
     }
     public void onClick(final View v) {
-        p("click &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&");
+        p("click on: "+v.getId());
         if(v instanceof Button) {
             Button button=(Button)v;
             Integer index=button.getId();
@@ -253,6 +265,9 @@ class Gui implements Observer, View.OnClickListener, Tablet.HasATablet {
                     guiAdapterABC.processClick(index);
                 else
                     p("guiAdapterABC is null!");
+            } else if(index.equals(hiddenButonIndex)) {
+                p("we clickon on the hiddem button.");
+                mainActivity.openOptionsMenu();
             } else {
                 p("map:"+indexToTabletId);
                 Integer key=index-model.buttons;
@@ -266,7 +281,8 @@ class Gui implements Observer, View.OnClickListener, Tablet.HasATablet {
                         p("this is our history");
                         if(histories.receiverHistory.history.attempts()==0)
                             l.severe("lost receiver history!");
-                        else l.info("we have receiver history.");
+                        else
+                            l.info("we have receiver history.");
                     }
                     Toast.makeText(mainActivity,"histories for: "+tabletId+": "+histories,Toast.LENGTH_LONG).show();
                 } else
@@ -362,9 +378,9 @@ class Gui implements Observer, View.OnClickListener, Tablet.HasATablet {
     MediaPlayer mediaPlayer;
     TextView bottom; // was used for messages, put it back
     Button[] buttons, status, test;
-    Button lineStatus, serverStatus, wifiStatus, routerStatus, singleStatus;
+    Button lineStatus, serverStatus, wifiStatus, routerStatus, singleStatus, hidden;
     Double lastClick=Double.NaN;
-    ExecutorService executorService=Executors.newFixedThreadPool(10);
+    final int hiddenButonIndex=1_000;
     GuiAdapter.GuiAdapterABC guiAdapterABC;
     final Map<Integer,String> indexToTabletId=new TreeMap<>();
     Tablet tablet;

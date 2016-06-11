@@ -46,7 +46,7 @@ class Runner extends RunnerABC {
         });
         p("prefs: "+prefs);
         //Exec.exec("settings put global captive_portal_detection_enabled 0 ");
-        loopSleep=10_000;
+        //loopSleep=10_000;
         //prefs.clear();
         // try clearing the prefs to see if it fixed the problem
         // that conrad found on sunday.
@@ -92,11 +92,11 @@ class Runner extends RunnerABC {
         mainActivity.runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                boolean isServerNull=tablet!=null&&((Group.TabletImpl2)tablet).server!=null
-                gui.serverStatus.setBackgroundColor(Colors.aColor(!isServerNull?Colors.green:Colors.red));
+                boolean isServerNonNull=tablet!=null&&((Group.TabletImpl2)tablet).server!=null;
+                gui.serverStatus.setBackgroundColor(Colors.aColor(isServerNonNull?Colors.green:Colors.red));
                 gui.wifiStatus.setBackgroundColor(Colors.aColor(isNetworkInterfaceUp?Colors.green:Colors.red));
                 gui.routerStatus.setBackgroundColor(Colors.aColor(isRouterOk?Colors.green:Colors.red));
-                gui.singleStatus.setBackgroundColor(Colors.aColor(!isServerNull&&isNetworkInterfaceUp&&isRouterOk?Colors.green:Colors.red));
+                gui.singleStatus.setBackgroundColor(Colors.aColor(isServerNonNull&&isNetworkInterfaceUp&&isRouterOk?Colors.green:Colors.red));
             }
         });
         p("end runner loop "+mainActivity);
