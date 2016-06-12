@@ -51,8 +51,7 @@ public class MainActivity extends Activity implements View.OnClickListener {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         pl("onCreate at: "+et+", process id: "+android.os.Process.myPid()+", "+this);
-        String androidId=Settings.Secure.getString(getContentResolver(),Settings.Secure.ANDROID_ID);
-        pl("android id: "+androidId);
+        androidId=Settings.Secure.getString(getContentResolver(),Settings.Secure.ANDROID_ID);
         if(false&&instances>1)
             try {
                 pl("more than one instance!- sleeping");
@@ -62,15 +61,15 @@ public class MainActivity extends Activity implements View.OnClickListener {
             }
         try {
             super.onCreate(savedInstanceState);
-            if(true) {
-                requestWindowFeature(Window.FEATURE_NO_TITLE);
-                getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,WindowManager.LayoutParams.FLAG_FULLSCREEN);
-            }
+            setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
+            requestWindowFeature(Window.FEATURE_NO_TITLE);
+            getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,WindowManager.LayoutParams.FLAG_FULLSCREEN);
             Logger global=Logger.getLogger(Logger.GLOBAL_LOGGER_NAME);
             LoggingHandler.init();
             LoggingHandler.setLevel(Level.WARNING);
             File logFileDirectory=getFilesDir();
-            LoggingHandler.addFileHandler(l,logFileDirectory,androidId);
+            LoggingHandler.addFileHandler(l,logFileDirectory,"tablet");
+            pl("android id: "+androidId);
             //LoggingHandler.toggleSockethandlers(); // looks like i need to wait for this?
             // yes, whould wait until wifi is up
             //Settings.Global.putInt(getContentResolver(), Settings.Global.CAPTIVE_PORTAL_DETECTION_ENABLED, 0);
@@ -183,11 +182,11 @@ public class MainActivity extends Activity implements View.OnClickListener {
     }
     void stopTabletStuff() {
         pl("in stop tablet stuff.");
-        if(runner.tablet!=null) { // do this first, before interrupting the runner as he will set tablet to null!
-            pl("stopping server.");
-            ((Group.TabletImpl2)runner.gui.tablet).stopServer();
+        if(runner.tablet!=null) {
+            pl("stopping tablet.");
+            runner.stop();
         } else
-            l.severe("tablet is null in on stop!");
+            l.severe("tablet is null in stopTabletStuff!");
         if(LoggingHandler.areAnySockethandlersOn()) {
             pl("stopping socket handers.");
             LoggingHandler.stopSocketHandlers();
@@ -229,6 +228,7 @@ public class MainActivity extends Activity implements View.OnClickListener {
     Runner runner;
     final NetworkStuff networkStuff=new NetworkStuff(this);
     final String savedStateKey="et";
+    String androidId;
     Double savedState;
     {
         instances++;

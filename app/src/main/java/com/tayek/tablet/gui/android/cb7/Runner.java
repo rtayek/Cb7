@@ -25,7 +25,7 @@ class Runner extends RunnerABC {
         String key="com.tayek.tablet.sharedPreferencesKey";
         sharedPreferences=mainActivity.getSharedPreferences(key,Context.MODE_PRIVATE);
         //sharedPreferences.edit().clear().commit(); // only if we have to
-        p("preferences: "+sharedPreferences.getAll());
+        pl("preferences: "+sharedPreferences.getAll());
         ((AndroidPrefs)prefs).setDelegate(new AndroidPrefs() {
             @Override
             public String get(String key) {
@@ -44,7 +44,7 @@ class Runner extends RunnerABC {
                 return sharedPreferences.getAll().toString();
             }
         });
-        p("prefs: "+prefs);
+        pl("prefs: "+prefs);
         //Exec.exec("settings put global captive_portal_detection_enabled 0 ");
         //loopSleep=10_000;
         //prefs.clear();
@@ -58,7 +58,7 @@ class Runner extends RunnerABC {
     }
     @Override
     public void buildGui(MessageReceiver.Model model) {
-        p("building gui.");
+        pl("building gui.");
         final RelativeLayout relativeLayout=gui.builGui();
         gui.setStatusVisibility(gui.status[0].getVisibility()==View.VISIBLE?View.INVISIBLE:View.VISIBLE);
         mainActivity.runOnUiThread(new Runnable() {
@@ -80,6 +80,9 @@ class Runner extends RunnerABC {
     @Override
     protected void loop(int n) {
         p("start runner loop "+mainActivity);
+        if(heartbeatperiod!=0&&n%heartbeatperiod==0)
+            pl("android id: "+mainActivity.androidId+", loop: "+n);
+
         super.loop(n);
         if(!isNetworkInterfaceUp) {
             new Thread(new Runnable() {
