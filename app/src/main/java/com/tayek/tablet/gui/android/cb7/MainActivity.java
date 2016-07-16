@@ -51,6 +51,7 @@ public class MainActivity extends Activity implements View.OnClickListener {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         pl("onCreate at: "+et+", process id: "+android.os.Process.myPid()+", "+this);
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         androidId=Settings.Secure.getString(getContentResolver(),Settings.Secure.ANDROID_ID);
         if(false&&instances>1)
             try {
