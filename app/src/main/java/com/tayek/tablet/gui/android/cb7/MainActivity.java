@@ -48,10 +48,16 @@ public class MainActivity extends Activity implements View.OnClickListener {
                 }
             });
     }
+    private static final String TAG="com.blundell.tut.ui.phone.ScreenOnWakeLockActivity.WAKE_LOCK_TAG";
+    private PowerManager.WakeLock wakeLock;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         pl("onCreate at: "+et+", process id: "+android.os.Process.myPid()+", "+this);
         androidId=Settings.Secure.getString(getContentResolver(),Settings.Secure.ANDROID_ID);
+        PowerManager powerManager=(PowerManager)getSystemService(POWER_SERVICE);
+        //wakeLock=powerManager.newWakeLock(PowerManager.SCREEN_DIM_WAKE_LOCK,TAG);
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+
         if(false&&instances>1)
             try {
                 pl("more than one instance!- sleeping");
@@ -78,6 +84,9 @@ public class MainActivity extends Activity implements View.OnClickListener {
                 String captivePortalDetectionEnabled="captive_portal_detection_enabled";
                 result=Settings.Global.getInt(getContentResolver(),captivePortalDetectionEnabled);
                 p("captivePortalDetectionEnabled="+result);
+                String stayOnWhilePluggedIn="stay_on_while_plugged_in";
+                int stayOn=Settings.Global.getInt(this.getContentResolver(),stayOnWhilePluggedIn);
+                pl(stayOnWhilePluggedIn+": "+stayOn);
             } catch(Exception e) {
                 p("caught: "+e);
             }
@@ -91,11 +100,24 @@ public class MainActivity extends Activity implements View.OnClickListener {
                     p("do an: adb shell settings put global captive_portal_detection_enabled 0");
                 }
             }
-            Map<String,Required> requireds=new TreeMap<>(new Group.Groups().groups.get("g0"));
+            Map<String,Required> requireds=new TreeMap<>(new IO.Groups().groups.get("g1")); // was g0!
+            IO.tabletWifiSsid="\"linksys42\"";
+            String tabletRouter, tabletRouterPrefix;
+            if(false) {
+                requireds=new Groups().groups.get("g0");
+                IO.tabletWifiSsid=IO.tabletWifiSsid;
+                tabletRouter=IO.tabletRouter;
+                tabletRouterPrefix=IO.tabletRouterPrefix;
+            } else {
+                requireds=new Groups().groups.get("g1");
+                IO.tabletWifiSsid="\"linksys42\"";
+                tabletRouter="192.168.1.1";
+                tabletRouterPrefix="192.168.1.";
+            }
             Group group=new Group("1",requireds,MessageReceiver.Model.mark1);
             p("starting runner at: "+et);
             p("requireds: "+requireds);
-            new Thread(runner=new Runner(group,this),"started runner").start();
+            new Thread(runner=new Runner(group,tabletRouter,tabletRouterPrefix,this),"started runner").start();
             p("exit onCreate at: "+et);
         } catch(Exception e) {
             e.printStackTrace();
@@ -164,11 +186,15 @@ public class MainActivity extends Activity implements View.OnClickListener {
     public void onPause() {
         pl("paused at: "+et);
         super.onPause();  // Always call the superclass method first
+        if(wakeLock!=null)
+            wakeLock.release();
     }
     @Override
     public void onResume() {
         pl("resumed at: "+et);
         super.onResume();  // Always call the superclass method first
+        if(wakeLock!=null)
+            wakeLock.acquire();
     }
     @Override
     protected void onStart() {

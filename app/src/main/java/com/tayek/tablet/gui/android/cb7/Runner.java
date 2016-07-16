@@ -17,14 +17,15 @@ class Runner extends RunnerABC {
     final SharedPreferences sharedPreferences; // add inet address and maybe service to preferences?
     final MainActivity mainActivity;
     Gui gui;
-    Runner(final Group group,final MainActivity mainActivity) {
-        super(group,tabletRouter,tabletRouterPrefix);
+    Runner(final Group group,String router,String routerPrefix,final MainActivity mainActivity) {
+        super(group,router,routerPrefix);
         // group, model, colors, audio observer are all set up now.
         this.mainActivity=mainActivity;
         gui=new Gui(mainActivity,group,model);
         String key="com.tayek.tablet.sharedPreferencesKey";
         sharedPreferences=mainActivity.getSharedPreferences(key,Context.MODE_PRIVATE);
         //sharedPreferences.edit().clear().commit(); // only if we have to
+        pl("router: "+router+", prefix: "+routerPrefix);
         pl("preferences: "+sharedPreferences.getAll());
         ((AndroidPrefs)prefs).setDelegate(new AndroidPrefs() {
             @Override
@@ -79,7 +80,7 @@ class Runner extends RunnerABC {
     }
     @Override
     protected void loop(int n) {
-        p("start runner loop "+mainActivity);
+        p("start runner loop "+mainActivity+", group: "+group);
         if(heartbeatperiod!=0&&n%heartbeatperiod==0)
             pl("android id: "+mainActivity.androidId+", loop: "+n);
 
