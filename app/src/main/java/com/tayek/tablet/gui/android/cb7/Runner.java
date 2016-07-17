@@ -45,11 +45,9 @@ class Runner extends RunnerABC {
             }
         });
         pl("prefs: "+prefs);
-        //Exec.exec("settings put global captive_portal_detection_enabled 0 ");
-        //loopSleep=10_000;
-        //prefs.clear();
-        // try clearing the prefs to see if it fixed the problem
-        // that conrad found on sunday.
+        prefs.clear();
+        pl("clearing preferences");
+        pl("prefs: "+prefs);
     }
     @Override
     public void init(MessageReceiver.Model model) {
