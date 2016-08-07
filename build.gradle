@@ -1,3 +1,5 @@
+import java.text.SimpleDateFormat
+
 // Top-level build file where you can add configuration options common to all sub-projects/modules.
 
 buildscript {
@@ -15,6 +17,11 @@ allprojects {
         jcenter()
     }
 }
+task printx() << {
+    println project
+    println project.name
+    println project.version
+}
 apply plugin: 'org.hidetake.ssh'
 remotes {
     web1 {
@@ -23,7 +30,7 @@ remotes {
         password=project.property('password')
     }
 }
-task deliver(dependsOn: ':app:assemble') << {
+task olddeliver(dependsOn: ':app:assemble') << {
     ssh.run {
         session(remotes.web1) {
             execute 'pwd'
@@ -31,6 +38,21 @@ task deliver(dependsOn: ':app:assemble') << {
             put from: 'app/build/outputs/apk/app-debug-unaligned.apk', into: 'html/conrad/app-debug-unaligned.apk'
             put from: 'app/build/outputs/apk/app-release-unsigned.apk', into: 'html/conrad/app-release-unsigned.apk'
             execute 'ls -l html/conrad'
+        }
+    }
+}
+task deliver(dependsOn: ':app:assemble') << {
+    String basename="html/conrad/apps/${project.name}.${project.version}".toString()
+    if(project.version.contains('unspecified'))
+        basename+=new SimpleDateFormat(".yyyy-MM-dd.hh-mm-ss").format(new Date())
+    ssh.run {
+        session(remotes.web1) {
+            execute 'pwd'
+            execute 'ls -l html/conrad/'
+            put from: 'app/build/outputs/apk/app-debug.apk', into: "$basename-app-debug.apk"
+            put from: 'app/build/outputs/apk/app-debug-unaligned.apk', into: "$basename-app-debug-unaligned.apk"
+            put from: 'app/build/outputs/apk/app-release-unsigned.apk', into: "$basename-app-release-unsigned.apk"
+            execute 'ls -l html/conrad/'
         }
     }
 }
