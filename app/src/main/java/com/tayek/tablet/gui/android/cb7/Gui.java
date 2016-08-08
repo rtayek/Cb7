@@ -173,7 +173,7 @@ class Gui implements Observer, View.OnClickListener, Tablet.HasATablet {
         xr=metrics.widthPixels-size/3+10;
         yr=metrics.heightPixels-size/3+10-size;
         hidden=getButton(size/3," ",fontsize,rows,columns,hiddenButonIndex-/*hack*/model.buttons,(int)xr,(int)yr);
-        hidden.setBackgroundColor(colors.background|0xff000000);
+        hidden.setBackgroundColor(Color.BLACK);
         p("hidden button is at: "+xr+", "+yr);
         relativeLayout.addView(hidden);
         if(false) {
@@ -198,7 +198,7 @@ class Gui implements Observer, View.OnClickListener, Tablet.HasATablet {
                 relativeLayout.addView(button);
             }
         }
-        relativeLayout.setBackgroundColor(colors.background|0xff000000);
+        relativeLayout.setBackgroundColor(Color.BLACK);
         return relativeLayout;
     }
     GuiAdapter.GuiAdapterABC buildGuiAdapter() {
